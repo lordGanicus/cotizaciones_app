@@ -1,10 +1,12 @@
 class CotizacionItem {
+  final String nombreCliente;
   final String detalle;
   final int cantidad;
   final double precioUnitario;
   final double total;
 
   CotizacionItem({
+    required this.nombreCliente,
     required this.detalle,
     required this.cantidad,
     required this.precioUnitario,
@@ -13,6 +15,7 @@ class CotizacionItem {
 
   Map<String, dynamic> toMap() {
     return {
+      'nombreCliente': nombreCliente,
       'detalle': detalle,
       'cantidad': cantidad,
       'precioUnitario': precioUnitario,

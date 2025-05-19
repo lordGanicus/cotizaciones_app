@@ -10,7 +10,7 @@ class ResumenLine extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
-    this.isTotal = false,
+    this.isTotal = false, required bool showDiscount,
   });
 
   @override

@@ -33,7 +33,7 @@ class HotelSelectionPage extends StatelessWidget {
               const SizedBox(height: 20),
               HotelCard(
                 name: 'Madero',
-                imagePath: 'assets/HotelMaderoLogo.png',
+                imagePath: 'assets/Madero.png',
                 onTap: () => _navigateToWelcome(context, 'Madero'),
               ),
               const SizedBox(height: 20),

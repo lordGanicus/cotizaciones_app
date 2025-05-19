@@ -20,14 +20,18 @@ class CotizacionPage extends StatefulWidget {
 }
 
 class _CotizacionPageState extends State<CotizacionPage> {
+  final TextEditingController _nombreClienteController =
+      TextEditingController();
   final TextEditingController _detalleController = TextEditingController();
   final TextEditingController _cantidadController = TextEditingController();
-  final TextEditingController _precioUnitarioController = TextEditingController();
+  final TextEditingController _precioUnitarioController =
+      TextEditingController();
   final TextEditingController _totalController = TextEditingController();
 
   List<CotizacionItem> _cotizaciones = [];
   int _editingIndex = -1;
-
+  String _tituloSeleccionado = 'Sr.';
+  final List<String> _titulos = ['Sr.', 'Sra.', 'Srta.', 'Dr.', 'Lic.'];
   @override
   void initState() {
     super.initState();
@@ -46,24 +50,25 @@ class _CotizacionPageState extends State<CotizacionPage> {
   }
 
   void _agregarOEditarItem() {
-    final detalle = _detalleController.text.trim();
+     final nombreCompleto = '$_tituloSeleccionado ${_nombreClienteController.text.trim()}';
+     final detalle = _detalleController.text.trim();
     final cantidad = int.tryParse(_cantidadController.text) ?? 0;
     final precioUnitario = double.tryParse(_precioUnitarioController.text) ?? 0;
     final total = double.tryParse(_totalController.text) ?? 0;
-
-    if (detalle.isEmpty || cantidad <= 0 || precioUnitario <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor complete todos los campos correctamente'),
-          backgroundColor: AppColors.errorColor,
-        ),
-      );
-      return;
-    }
+    if (nombreCompleto.trim().isEmpty || detalle.isEmpty || cantidad <= 0 || precioUnitario <= 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Por favor complete todos los campos correctamente'),
+        backgroundColor: AppColors.errorColor,
+      ),
+    );
+    return;
+  }
 
     setState(() {
       if (_editingIndex >= 0) {
         _cotizaciones[_editingIndex] = CotizacionItem(
+          nombreCliente: nombreCompleto,
           detalle: detalle,
           cantidad: cantidad,
           precioUnitario: precioUnitario,
@@ -71,18 +76,23 @@ class _CotizacionPageState extends State<CotizacionPage> {
         );
         _editingIndex = -1;
       } else {
-        _cotizaciones.add(CotizacionItem(
-          detalle: detalle,
-          cantidad: cantidad,
-          precioUnitario: precioUnitario,
-          total: total,
-        ));
+        _cotizaciones.add(
+          CotizacionItem(
+            nombreCliente: nombreCompleto,
+            detalle: detalle,
+            cantidad: cantidad,
+            precioUnitario: precioUnitario,
+            total: total,
+          ),
+        );
       }
       _limpiarFormulario();
     });
   }
 
   void _limpiarFormulario() {
+   _tituloSeleccionado = 'Sr.'; 
+    _nombreClienteController.clear();
     _detalleController.clear();
     _cantidadController.clear();
     _precioUnitarioController.clear();
@@ -93,6 +103,7 @@ class _CotizacionPageState extends State<CotizacionPage> {
     setState(() {
       _editingIndex = index;
       final item = _cotizaciones[index];
+      _nombreClienteController.text = item.nombreCliente;
       _detalleController.text = item.detalle;
       _cantidadController.text = item.cantidad.toString();
       _precioUnitarioController.text = item.precioUnitario.toStringAsFixed(2);
@@ -124,20 +135,23 @@ class _CotizacionPageState extends State<CotizacionPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ResumenPage(
-          cotizaciones: _cotizaciones,
-          hotelName: widget.hotelName,
-          primaryColor: widget.primaryColor,
-          logoPath: widget.logoPath,
-        ),
+        builder:
+            (context) => ResumenPage(
+              cotizaciones: _cotizaciones,
+              hotelName: widget.hotelName,
+              primaryColor: widget.primaryColor,
+              logoPath: widget.logoPath,
+            ),
       ),
     );
   }
 
-  double get _totalCosto => _cotizaciones.fold(0, (sum, item) => sum + item.total);
+  double get _totalCosto =>
+      _cotizaciones.fold(0, (sum, item) => sum + item.total);
 
   @override
   void dispose() {
+    _nombreClienteController.dispose();
     _detalleController.dispose();
     _cantidadController.dispose();
     _precioUnitarioController.dispose();
@@ -155,15 +169,60 @@ class _CotizacionPageState extends State<CotizacionPage> {
         elevation: 8,
         shadowColor: widget.primaryColor.withOpacity(0.5),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(15),
-          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+             Row(
+            children: [
+              DropdownButton<String>(
+                value: _tituloSeleccionado,
+                dropdownColor: Colors.white,
+                icon: Icon(Icons.arrow_drop_down, color: widget.primaryColor),
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                ),
+                underline: Container(
+                  height: 2,
+                  color: widget.primaryColor,
+                ),
+                items: _titulos.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _tituloSeleccionado = newValue!;
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _nombreClienteController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre del Cliente',
+                    hintText: 'Ej: Juan Pérez',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
             TextField(
               controller: _detalleController,
               decoration: InputDecoration(
@@ -175,10 +234,7 @@ class _CotizacionPageState extends State<CotizacionPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: widget.primaryColor,
-                    width: 2,
-                  ),
+                  borderSide: BorderSide(color: widget.primaryColor, width: 2),
                 ),
               ),
             ),
@@ -343,11 +399,7 @@ class _CotizacionPageState extends State<CotizacionPage> {
               ),
             ],
             const SizedBox(height: 24),
-            const Divider(
-              thickness: 1,
-              height: 1,
-              color: Colors.grey,
-            ),
+            const Divider(thickness: 1, height: 1, color: Colors.grey),
             const SizedBox(height: 16),
             const Text(
               'ITEMS AGREGADOS',
@@ -359,98 +411,93 @@ class _CotizacionPageState extends State<CotizacionPage> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: _cotizaciones.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.list_alt,
-                            size: 50,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No hay items agregados',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 16,
+              child:
+                  _cotizaciones.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.list_alt,
+                              size: 50,
+                              color: Colors.grey.shade400,
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _cotizaciones.length,
-                      itemBuilder: (context, index) {
-                        final item = _cotizaciones[index];
-                        return Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            title: Text(
-                              item.detalle,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${item.cantidad} x ${item.precioUnitario.toStringAsFixed(2)} Bs',
-                              style: const TextStyle(
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No hay items agregados',
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
+                                fontSize: 16,
                               ),
                             ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                          ],
+                        ),
+                      )
+                      : ListView.builder(
+                        itemCount: _cotizaciones.length,
+                        itemBuilder: (context, index) {
+                          final item = _cotizaciones[index];
+                          return Card(
+                            child:ListTile(
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${item.total.toStringAsFixed(2)} Bs',
-                                  style: const TextStyle(
+                                  item.nombreCliente,
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: widget.primaryColor,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit,
-                                        size: 22,
-                                        color: widget.primaryColor,
-                                      ),
-                                      onPressed: () => _editarItem(index),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        size: 22,
-                                        color: AppColors.errorColor,
-                                      ),
-                                      onPressed: () => _borrarItem(index),
-                                    ),
-                                  ],
-                                ),
+                                Text(item.detalle),
                               ],
+                              ),                                                  
+                              subtitle: Text(
+                                '${item.cantidad} x ${item.precioUnitario.toStringAsFixed(2)} Bs',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${item.total.toStringAsFixed(2)} Bs',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.edit,
+                                          size: 22,
+                                          color: widget.primaryColor,
+                                        ),
+                                        onPressed: () => _editarItem(index),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          size: 22,
+                                          color: AppColors.errorColor,
+                                        ),
+                                        onPressed: () => _borrarItem(index),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
             ),
-            const Divider(
-              thickness: 1,
-              height: 1,
-              color: Colors.grey,
-            ),
+            const Divider(thickness: 1, height: 1, color: Colors.grey),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: Row(
@@ -458,10 +505,7 @@ class _CotizacionPageState extends State<CotizacionPage> {
                 children: [
                   const Text(
                     'TOTAL COSTO:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     '${_totalCosto.toStringAsFixed(2)} Bs',

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const Map<String, Color> hotelColors = {
     'Rey Palac': Color(0xFF4e000e),
-    'Madero': Color(0xFF8B4513),
+    'Madero': Color(0xFF4D3D30),
     'Altus': Color(0xFF4682B4),
   };
 
