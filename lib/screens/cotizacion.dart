@@ -28,7 +28,7 @@ class _CotizacionPageState extends State<CotizacionPage> {
       TextEditingController();
   final TextEditingController _totalController = TextEditingController();
 
-  List<CotizacionItem> _cotizaciones = [];
+  final List<CotizacionItem> _cotizaciones = [];
   int _editingIndex = -1;
   String _tituloSeleccionado = 'Sr.';
   final List<String> _titulos = ['Sr.', 'Sra.', 'Srta.', 'Dr.', 'Lic.'];

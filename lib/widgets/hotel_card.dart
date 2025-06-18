@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../screens/bienvenida.dart';
 
 class HotelCard extends StatelessWidget {
   final String name;
