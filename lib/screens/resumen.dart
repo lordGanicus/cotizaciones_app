@@ -210,7 +210,7 @@ class ResumenPage extends StatelessWidget {
                                 ],
                               ),
                             ),
-                          )),
+                          )).toList(),
 
                           // Subtotal por cliente
                           Padding(
@@ -239,7 +239,7 @@ class ResumenPage extends StatelessWidget {
                           const Divider(),
                         ],
                       );
-                    }),
+                    }).toList(),
                   ],
                 ),
               ),
