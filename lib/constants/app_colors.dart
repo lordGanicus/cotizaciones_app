@@ -11,7 +11,8 @@ class AppColors {
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF212529);
   static const Color textSecondary = Color(0xFF6C757D);
-  static const Color successColor = Color(0xFF28A745);
+  static const Color successColor = Color.fromARGB(255, 29, 10, 10);
   static const Color errorColor = Color(0xFFDC3545);
   static const Color warningColor = Color(0xFFFFC107);
+  static const Color primary = Color(0xFF0066CC); 
 }

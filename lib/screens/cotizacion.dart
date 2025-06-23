@@ -7,6 +7,8 @@ class CotizacionPage extends StatefulWidget {
   final String hotelName;
   final Color primaryColor;
   final String logoPath;
+  
+  
 
   const CotizacionPage({
     super.key,
