@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/hotel_card.dart';
 import 'registro_usuario_page.dart';
 
+// IMPORTA AQUÍ TU PANTALLA PASO 1
+import 'pasos/crear_cotizacion_habitacion_step1.dart'; // Ajusta la ruta según tu estructura
+
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
 
@@ -29,16 +32,13 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
-      print('Usuario actual: $user');
-
-      // Datos del usuario y hotel único
+      // Carga datos del usuario y hotel único
       final responseUser = await supabase
           .from('usuarios')
-          .select('nombre_completo, ci, id_establecimiento, establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo)')
+          .select(
+              'nombre_completo, ci, id_establecimiento, establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo)')
           .eq('id', user.id)
           .maybeSingle();
-
-      print('Datos del usuario: $responseUser');
 
       if (responseUser != null) {
         datosUsuario = {
@@ -55,17 +55,16 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
         }
       }
 
-      // Buscar en tabla intermedia
+      // Si no tiene hotel único, cargar múltiples
       final responseMultiples = await supabase
           .from('usuarios_establecimientos')
           .select('establecimientos(nombre, logotipo, id)')
           .eq('id_usuario', user.id);
 
-      print('Hoteles múltiples: $responseMultiples');
-
       if (responseMultiples != null && responseMultiples.isNotEmpty) {
         List<Map<String, dynamic>> hoteles = (responseMultiples as List)
-            .map<Map<String, dynamic>>((e) => e['establecimientos'] as Map<String, dynamic>)
+            .map<Map<String, dynamic>>(
+                (e) => e['establecimientos'] as Map<String, dynamic>)
             .toList();
 
         setState(() {
@@ -75,6 +74,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
         return;
       }
 
+      // No hay hoteles asignados
       setState(() {
         hotelUnico = null;
         hotelesMultiples = [];
@@ -109,10 +109,14 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       'id_usuario': user.id,
     }).select().single();
 
-    print('Cotización creada: $nuevaCotizacion');
-
     if (context.mounted) {
-      // Navegación a cotización (cuando esté lista)
+      final idCotizacion = nuevaCotizacion['id'];
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PasoCantidadPage(idCotizacion: idCotizacion),
+        ),
+      );
     }
   }
 
@@ -179,12 +183,14 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           future: _cargarCotizaciones(),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                  child: CircularProgressIndicator());
                             }
 
                             final cotizaciones = snapshot.data!;
                             if (cotizaciones.isEmpty) {
-                              return const Center(child: Text('No hay cotizaciones registradas.'));
+                              return const Center(
+                                  child: Text('No hay cotizaciones registradas.'));
                             }
 
                             return ListView.builder(
@@ -194,7 +200,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                               itemBuilder: (context, index) {
                                 final c = cotizaciones[index];
                                 return ListTile(
-                                  title: Text('Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
+                                  title: Text(
+                                      'Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
                                   subtitle: Text('Estado: ${c['estado']}'),
                                   trailing: const Icon(Icons.chevron_right),
                                   onTap: () {
@@ -231,7 +238,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ),
                 ] else ...[
                   const Center(
-                    child: Text('No tienes un hotel asignado. Contacta con un administrador.'),
+                    child:
+                        Text('No tienes un hotel asignado. Contacta con un administrador.'),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -239,7 +247,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RegistroUsuarioPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const RegistroUsuarioPage()),
                     );
                   },
                   child: const Text('Registrar Usuario'),
