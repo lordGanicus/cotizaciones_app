@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cotizaciones_app/screens/pasos/crear_cotizacion_habitacion_step3.dart';
+import 'package:intl/intl.dart'; // Para dar formato bonito a las fechas
 
 class PasoFechaPage extends StatefulWidget {
   final String idCotizacion;
@@ -64,37 +65,63 @@ class _PasoFechaPageState extends State<PasoFechaPage> {
     return 0;
   }
 
+  String _formatearFecha(DateTime fecha) {
+    return DateFormat('dd/MM/yyyy').format(fecha);
+  }
+
   @override
   Widget build(BuildContext context) {
     final fechaOk = _fechaIngreso != null && _fechaSalida != null && cantidadNoches > 0;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Paso 2: Fechas')),
+      appBar: AppBar(
+        title: const Text('Paso 2 - Fechas de Hospedaje'),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            ElevatedButton(
-              onPressed: _seleccionarFechaIngreso,
-              child: Text(_fechaIngreso == null
-                  ? 'Seleccionar Fecha de Ingreso'
-                  : 'Ingreso: ${_fechaIngreso!.toLocal()}'.split(' ')[0]),
+            ListTile(
+              leading: const Icon(Icons.calendar_today_outlined),
+              title: const Text('Fecha de ingreso'),
+              subtitle: Text(
+                _fechaIngreso != null ? _formatearFecha(_fechaIngreso!) : 'No seleccionada',
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit_calendar),
+                onPressed: _seleccionarFechaIngreso,
+              ),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _fechaIngreso == null ? null : _seleccionarFechaSalida,
-              child: Text(_fechaSalida == null
-                  ? 'Seleccionar Fecha de Salida'
-                  : 'Salida: ${_fechaSalida!.toLocal()}'.split(' ')[0]),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text('Fecha de salida'),
+              subtitle: Text(
+                _fechaSalida != null ? _formatearFecha(_fechaSalida!) : 'No seleccionada',
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit_calendar),
+                onPressed: _fechaIngreso == null ? null : _seleccionarFechaSalida,
+              ),
             ),
+            const SizedBox(height: 16),
             if (fechaOk)
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Text('Cantidad de noches: $cantidadNoches',
-                    style: const TextStyle(fontSize: 16)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.night_shelter_outlined),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Cantidad de noches: $cantidadNoches',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             const Spacer(),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: fechaOk
                   ? () {
                       Navigator.push(
@@ -113,7 +140,17 @@ class _PasoFechaPageState extends State<PasoFechaPage> {
                       );
                     }
                   : null,
-              child: const Text('Siguiente'),
+              icon: const Icon(Icons.navigate_next),
+              label: const Text('Siguiente'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(fontSize: 16),
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),

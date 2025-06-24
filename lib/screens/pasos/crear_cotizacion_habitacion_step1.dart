@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cotizaciones_app/screens/pasos/crear_cotizacion_habitacion_step2.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ Agregado
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PasoCantidadPage extends StatefulWidget {
   final String idCotizacion;
@@ -27,7 +27,7 @@ class _PasoCantidadPageState extends State<PasoCantidadPage> {
   final TextEditingController _nombreClienteController = TextEditingController();
   final TextEditingController _ciClienteController = TextEditingController();
 
-  final supabase = Supabase.instance.client; // ✅ Agregado
+  final supabase = Supabase.instance.client;
 
   Future<void> _guardarClienteYContinuar() async {
     final nombre = _nombreClienteController.text.trim();
@@ -62,45 +62,66 @@ class _PasoCantidadPageState extends State<PasoCantidadPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Paso 1 - Cliente, Tipo y Cantidad')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(
+        title: const Text('Paso 1 - Datos del Cliente'),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Cotización ID: ${widget.idCotizacion}'),
-            const SizedBox(height: 16),
+            Text('Cotización ID: ${widget.idCotizacion}',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+
             TextField(
               controller: _nombreClienteController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre del cliente (persona o empresa)',
+              decoration: InputDecoration(
+                labelText: 'Nombre del cliente',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_outline),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+
             TextField(
               controller: _ciClienteController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'CI / NIT (opcional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.badge_outlined),
               ),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 24),
+
             DropdownButtonFormField<String>(
               value: _tipoSeleccionado,
-              decoration: const InputDecoration(labelText: 'Tipo de habitación'),
-              items: _tipos.map((tipo) {
-                return DropdownMenuItem(value: tipo, child: Text(tipo));
-              }).toList(),
+              decoration: InputDecoration(
+                labelText: 'Tipo de habitación',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.hotel_outlined),
+              ),
+              items: _tipos
+                  .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
+                  .toList(),
               onChanged: (value) {
-                setState(() {
-                  _tipoSeleccionado = value;
-                });
+                setState(() => _tipoSeleccionado = value);
               },
             ),
             const SizedBox(height: 24),
+
+            Text('Cantidad de habitaciones', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
+                IconButton.filled(
                   onPressed: () {
                     if (_cantidad > 1) {
                       setState(() => _cantidad--);
@@ -108,26 +129,47 @@ class _PasoCantidadPageState extends State<PasoCantidadPage> {
                   },
                   icon: const Icon(Icons.remove),
                 ),
-                Text('$_cantidad', style: const TextStyle(fontSize: 24)),
-                IconButton(
-                  onPressed: () {
-                    setState(() => _cantidad++);
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('$_cantidad', style: const TextStyle(fontSize: 24)),
+                ),
+                IconButton.filled(
+                  onPressed: () => setState(() => _cantidad++),
                   icon: const Icon(Icons.add),
                 ),
               ],
             ),
             const SizedBox(height: 32),
-            ElevatedButton(
+
+            ElevatedButton.icon(
               onPressed: _tipoSeleccionado == null || _nombreClienteController.text.trim().isEmpty
                   ? null
-                  : _guardarClienteYContinuar, // ✅ Actualizado
-              child: const Text('Siguiente'),
+                  : _guardarClienteYContinuar,
+              icon: const Icon(Icons.navigate_next),
+              label: const Text('Siguiente'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(fontSize: 16),
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
+
+            OutlinedButton.icon(
               onPressed: () => Navigator.of(context).maybePop(),
-              child: const Text('Cancelar'),
+              icon: const Icon(Icons.close),
+              label: const Text('Cancelar'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),
@@ -135,4 +177,3 @@ class _PasoCantidadPageState extends State<PasoCantidadPage> {
     );
   }
 }
-
