@@ -15,4 +15,5 @@ class AppColors {
   static const Color errorColor = Color(0xFFDC3545);
   static const Color warningColor = Color(0xFFFFC107);
   static const Color primary = Color(0xFF0066CC); 
+  static const Color secondary = Color.fromARGB(255, 5, 10, 54); 
 }
