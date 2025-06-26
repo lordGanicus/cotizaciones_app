@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/hotel_card.dart';
 import 'registro_usuario_page.dart';
+import 'pasos/crear_cotizacion_habitacion_step1.dart';
 
-// IMPORTA AQUÍ TU PANTALLA PASO 1
-import 'pasos/crear_cotizacion_habitacion_step1.dart'; // Ajusta la ruta según tu estructura
+// ✅ NUEVA IMPORTACIÓN
+import 'servicios/servicios_screen.dart';
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -32,7 +33,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
-      // Carga datos del usuario y hotel único
       final responseUser = await supabase
           .from('usuarios')
           .select(
@@ -55,7 +55,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
         }
       }
 
-      // Si no tiene hotel único, cargar múltiples
       final responseMultiples = await supabase
           .from('usuarios_establecimientos')
           .select('establecimientos(nombre, logotipo, id)')
@@ -74,7 +73,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
         return;
       }
 
-      // No hay hoteles asignados
       setState(() {
         hotelUnico = null;
         hotelesMultiples = [];
@@ -190,7 +188,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                             final cotizaciones = snapshot.data!;
                             if (cotizaciones.isEmpty) {
                               return const Center(
-                                  child: Text('No hay cotizaciones registradas.'));
+                                  child:
+                                      Text('No hay cotizaciones registradas.'));
                             }
 
                             return ListView.builder(
@@ -238,11 +237,23 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ),
                 ] else ...[
                   const Center(
-                    child:
-                        Text('No tienes un hotel asignado. Contacta con un administrador.'),
+                    child: Text(
+                        'No tienes un hotel asignado. Contacta con un administrador.'),
                   ),
                 ],
                 const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ServiciosScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.miscellaneous_services),
+                  label: const Text('Servicios Incluidos'),
+                ),
+                const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
