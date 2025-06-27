@@ -4,8 +4,10 @@ import '../widgets/hotel_card.dart';
 import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
 
-// ✅ NUEVA IMPORTACIÓN
+// Importaciones nuevas para las pantallas de servicios, refrigerios y salones
 import 'servicios/servicios_screen.dart';
+import 'refrigerios/refrigerios_screen.dart';
+import 'salon/salones_screen.dart';  // <-- Importa aquí tu pantalla de salones
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -242,24 +244,55 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ),
                 ],
                 const SizedBox(height: 24),
+
+                // Botón para Servicios Incluidos
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const ServiciosScreen()),
+                      MaterialPageRoute(builder: (_) => const ServiciosScreen()),
                     );
                   },
                   icon: const Icon(Icons.miscellaneous_services),
                   label: const Text('Servicios Incluidos'),
                 ),
+
                 const SizedBox(height: 12),
+
+                // Botón para Refrigerios
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RefrigeriosScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.fastfood),
+                  label: const Text('Refrigerios'),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Botón para Salones (el que pediste)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SalonesScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.meeting_room),
+                  label: const Text('Salones'),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Botón para Registrar Usuario
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const RegistroUsuarioPage()),
+                      MaterialPageRoute(builder: (_) => const RegistroUsuarioPage()),
                     );
                   },
                   child: const Text('Registrar Usuario'),

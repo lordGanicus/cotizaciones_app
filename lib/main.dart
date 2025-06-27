@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/hotel_selection.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -13,7 +14,7 @@ Future<void> main() async {
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
   );
 
-  runApp(const CotizacionApp());
+  runApp(const ProviderScope(child: CotizacionApp()));
 }
 
 class CotizacionApp extends StatelessWidget {

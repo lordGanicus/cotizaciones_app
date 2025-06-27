@@ -4,26 +4,30 @@ import '../models/servicio_incluido.dart';
 
 final supabase = Supabase.instance.client;
 
-// Provider principal
-final serviciosProvider = StateNotifierProvider<ServiciosNotifier, List<ServicioIncluido>>((ref) {
+// Cambiamos a AsyncNotifier para manejar loading, error y datos automáticamente
+final serviciosProvider = AsyncNotifierProvider<ServiciosNotifier, List<ServicioIncluido>>(() {
   return ServiciosNotifier();
 });
 
-class ServiciosNotifier extends StateNotifier<List<ServicioIncluido>> {
-  ServiciosNotifier() : super([]) {
-    cargarServicios();
+class ServiciosNotifier extends AsyncNotifier<List<ServicioIncluido>> {
+  @override
+  Future<List<ServicioIncluido>> build() async {
+    // Al construir, carga los servicios
+    return cargarServicios();
   }
 
-  Future<void> cargarServicios() async {
+  Future<List<ServicioIncluido>> cargarServicios() async {
     final response = await supabase
         .from('servicios_incluidos')
         .select()
         .order('created_at', ascending: false);
 
-    state = response
-        .map((row) => ServicioIncluido.fromMap(row))
-        .toList()
-        .cast<ServicioIncluido>();
+    final lista = response
+        .map<ServicioIncluido>((row) => ServicioIncluido.fromMap(row))
+        .toList();
+
+    state = AsyncData(lista);
+    return lista;
   }
 
   Future<void> agregarServicio(String nombre, String descripcion) async {
@@ -33,7 +37,7 @@ class ServiciosNotifier extends StateNotifier<List<ServicioIncluido>> {
     }).select().single();
 
     final nuevo = ServicioIncluido.fromMap(response);
-    state = [nuevo, ...state];
+    state = AsyncData([nuevo, ...state.value ?? []]);
   }
 
   Future<void> editarServicio(String id, String nombre, String descripcion) async {
@@ -42,22 +46,26 @@ class ServiciosNotifier extends StateNotifier<List<ServicioIncluido>> {
       'descripcion': descripcion,
     }).eq('id', id);
 
-    state = [
-      for (final servicio in state)
-        if (servicio.id == id)
-          ServicioIncluido(
-            id: id,
-            nombre: nombre,
-            descripcion: descripcion,
-            createdAt: servicio.createdAt,
-          )
-        else
-          servicio
-    ];
+    final listaActual = state.value ?? [];
+    final nuevaLista = listaActual.map((servicio) {
+      if (servicio.id == id) {
+        return ServicioIncluido(
+          id: id,
+          nombre: nombre,
+          descripcion: descripcion,
+          createdAt: servicio.createdAt,
+        );
+      }
+      return servicio;
+    }).toList();
+
+    state = AsyncData(nuevaLista);
   }
 
   Future<void> eliminarServicio(String id) async {
     await supabase.from('servicios_incluidos').delete().eq('id', id);
-    state = state.where((servicio) => servicio.id != id).toList();
+
+    final listaActual = state.value ?? [];
+    state = AsyncData(listaActual.where((servicio) => servicio.id != id).toList());
   }
 }

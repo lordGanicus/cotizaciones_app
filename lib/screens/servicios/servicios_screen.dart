@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/servicios_provider.dart';
 import '../../models/servicio_incluido.dart';
+import '../../providers/servicios_provider.dart';
 import 'servicio_form.dart';
 
 class ServiciosScreen extends ConsumerWidget {
@@ -9,53 +9,64 @@ class ServiciosScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicios = ref.watch(serviciosProvider);
+    final serviciosAsync = ref.watch(serviciosProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Servicios Incluidos'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.refresh(serviciosProvider),
+            tooltip: 'Actualizar',
+          )
+        ],
       ),
-      body: servicios.isEmpty
-          ? const Center(child: Text('No hay servicios registrados.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: servicios.length,
-              itemBuilder: (context, index) {
-                final servicio = servicios[index];
+      body: serviciosAsync.when(
+        data: (servicios) => servicios.isEmpty
+            ? const Center(child: Text('No hay servicios registrados.'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: servicios.length,
+                itemBuilder: (context, index) {
+                  final servicio = servicios[index];
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  elevation: 2,
-                  child: ListTile(
-                    title: Text(servicio.nombre),
-                    subtitle: Text(servicio.descripcion),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          showDialog(
-                            context: context,
-                            builder: (_) => ServicioForm(servicio: servicio),
-                          );
-                        } else if (value == 'delete') {
-                          _confirmarEliminacion(context, ref, servicio.id);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Editar'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Eliminar'),
-                        ),
-                      ],
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    elevation: 2,
+                    child: ListTile(
+                      title: Text(servicio.nombre),
+                      subtitle: Text(servicio.descripcion),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            showDialog(
+                              context: context,
+                              builder: (_) => ServicioForm(servicio: servicio),
+                            );
+                          } else if (value == 'delete') {
+                            _confirmarEliminacion(context, ref, servicio.id);
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Editar'),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Eliminar'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Error: $error')),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showDialog(
