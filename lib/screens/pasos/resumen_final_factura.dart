@@ -24,6 +24,7 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
   String? nombreHotel;
   String? logoHotel;
   List<Map<String, dynamic>> items = [];
+  double totalFinal = 0;
   bool isLoading = true;
   String? error;
 
@@ -41,7 +42,7 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
 
     try {
       final user = supabase.auth.currentUser;
-      if (user == null) throw 'No hay usuario logueado';
+      if (user == null) throw 'Usuario no logueado';
 
       final usuarioResponse = await supabase
           .from('usuarios')
@@ -57,18 +58,26 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
           .eq('id', idEstablecimiento)
           .single();
 
-      setState(() {
-        nombreHotel = establecimientoResponse['nombre'] as String?;
-        logoHotel = establecimientoResponse['logotipo'] as String?;
-      });
-
       final itemsResponse = await supabase
           .from('items_cotizacion')
           .select()
           .eq('id_cotizacion', widget.idCotizacion);
 
+      final itemsList = List<Map<String, dynamic>>.from(itemsResponse);
+
+      // Calcular total
+      double total = 0;
+      for (final item in itemsList) {
+        final cantidad = item['cantidad'] ?? 0;
+        final precio = item['precio_unitario'] ?? 0.0;
+        total += cantidad * precio;
+      }
+
       setState(() {
-        items = List<Map<String, dynamic>>.from(itemsResponse);
+        nombreHotel = establecimientoResponse['nombre'] as String?;
+        logoHotel = establecimientoResponse['logotipo'] as String?;
+        items = itemsList;
+        totalFinal = total;
         isLoading = false;
       });
     } catch (e) {
@@ -81,17 +90,22 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
 
   Widget _buildItem(Map<String, dynamic> item, int index) {
     final detalles = item['detalles'] as Map<String, dynamic>? ?? {};
-    String fechaIngreso = detalles['fecha_ingreso'] ?? '-';
-    String fechaSalida = detalles['fecha_salida'] ?? '-';
+    final fechaIngreso = detalles['fecha_ingreso'];
+    final fechaSalida = detalles['fecha_salida'];
+
+    String ingreso = '-';
+    String salida = '-';
 
     try {
-      fechaIngreso = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaIngreso));
+      ingreso = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaIngreso));
     } catch (_) {}
     try {
-      fechaSalida = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaSalida));
+      salida = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaSalida));
     } catch (_) {}
 
-    final total = (item['cantidad'] ?? 0) * (item['precio_unitario'] ?? 0.0);
+    final cantidad = item['cantidad'] ?? 0;
+    final precioUnitario = item['precio_unitario'] ?? 0.0;
+    final subtotal = cantidad * precioUnitario;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -106,14 +120,14 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ingreso: $fechaIngreso'),
-            Text('Salida: $fechaSalida'),
-            Text('Cantidad: ${item['cantidad']}'),
-            Text('Precio Unitario: Bs ${item['precio_unitario']}'),
+            Text('Ingreso: $ingreso'),
+            Text('Salida: $salida'),
+            Text('Cantidad: $cantidad'),
+            Text('Precio Unitario: Bs ${precioUnitario.toStringAsFixed(2)}'),
           ],
         ),
         trailing: Text(
-          'Bs ${total.toStringAsFixed(2)}',
+          'Bs ${subtotal.toStringAsFixed(2)}',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -122,10 +136,12 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(nombreHotel ?? 'Resumen de cotización'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: Text(nombreHotel ?? 'Resumen de Cotización'),
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
       body: isLoading
@@ -133,9 +149,8 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
           : error != null
               ? Center(child: Text(error!))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       if (logoHotel != null && logoHotel!.isNotEmpty)
                         ClipRRect(
@@ -144,16 +159,17 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
                             logoHotel!,
                             height: 100,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.hotel, size: 100, color: Colors.grey),
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.hotel, size: 100, color: Colors.grey),
                           ),
                         ),
                       const SizedBox(height: 12),
-                      Text(
-                        nombreHotel ?? '',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                        textAlign: TextAlign.center,
-                      ),
+                      if (nombreHotel != null)
+                        Text(nombreHotel!,
+                            style: Theme.of(context).textTheme.headlineMedium,
+                            textAlign: TextAlign.center),
                       const SizedBox(height: 24),
+
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -161,6 +177,7 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text('Cliente:', style: Theme.of(context).textTheme.titleMedium),
                             const SizedBox(height: 4),
@@ -169,22 +186,37 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
                           ],
                         ),
                       ),
+
                       const SizedBox(height: 24),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Items de la cotización',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        child: Text('Items de la cotización',
+                            style: Theme.of(context).textTheme.titleMedium),
                       ),
                       const SizedBox(height: 8),
+
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: items.length,
                         itemBuilder: (context, index) => _buildItem(items[index], index),
                       ),
+
+                      const SizedBox(height: 20),
+                      Divider(thickness: 1.5, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Final:',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('Bs ${totalFinal.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                       const SizedBox(height: 32),
+
+                      // Botones PDF / Enviar correo
                       ElevatedButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(

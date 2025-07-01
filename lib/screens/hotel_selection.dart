@@ -4,10 +4,11 @@ import '../widgets/hotel_card.dart';
 import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
 
-// Importaciones nuevas para las pantallas de servicios, refrigerios y salones
+// Importaciones nuevas para las pantallas de gestión
 import 'servicios/servicios_screen.dart';
 import 'refrigerios/refrigerios_screen.dart';
-import 'salon/salones_screen.dart';  // <-- Importa aquí tu pantalla de salones
+import 'salon/salones_screen.dart';
+import 'habitaciones/habitaciones_screen.dart'; // 
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -256,7 +257,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   icon: const Icon(Icons.miscellaneous_services),
                   label: const Text('Servicios Incluidos'),
                 ),
-
                 const SizedBox(height: 12),
 
                 // Botón para Refrigerios
@@ -270,10 +270,9 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   icon: const Icon(Icons.fastfood),
                   label: const Text('Refrigerios'),
                 ),
-
                 const SizedBox(height: 12),
 
-                // Botón para Salones (el que pediste)
+                // Botón para Salones
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -284,7 +283,19 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   icon: const Icon(Icons.meeting_room),
                   label: const Text('Salones'),
                 ),
+                const SizedBox(height: 12),
 
+                // Botón para Habitaciones
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HabitacionesScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.bed),
+                  label: const Text('Habitaciones'),
+                ),
                 const SizedBox(height: 12),
 
                 // Botón para Registrar Usuario
@@ -292,7 +303,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RegistroUsuarioPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const RegistroUsuarioPage()),
                     );
                   },
                   child: const Text('Registrar Usuario'),

@@ -21,7 +21,11 @@ class _SalonesScreenState extends ConsumerState<SalonesScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+
+    // 🔧 Solución al error: diferir la carga de datos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarDatos();
+    });
   }
 
   Future<void> _cargarDatos() async {

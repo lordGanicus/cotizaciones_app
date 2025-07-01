@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/salon.dart';
+import '../../models/servicio_incluido.dart';
+import '../../models/refrigerio.dart';
 import '../../providers/salones_provider.dart';
 import '../../providers/servicios_provider.dart';
 import '../../providers/refrigerios_provider.dart';
@@ -50,11 +52,52 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     super.dispose();
   }
 
+  Future<void> _seleccionarServicios() async {
+    final servicios = ref.read(serviciosProvider).value ?? [];
+    final seleccionados = await showDialog<Set<String>>(
+      context: context,
+      builder: (_) => _SeleccionDialog<ServicioIncluido>(
+        titulo: 'Seleccionar servicios incluidos',
+        elementos: servicios,
+        seleccionInicial: _serviciosSeleccionados,
+        labelBuilder: (s) => s.nombre,
+        descripcionBuilder: (s) => s.descripcion,
+        idBuilder: (s) => s.id,
+      ),
+    );
+
+    if (seleccionados != null) {
+      setState(() {
+        _serviciosSeleccionados = seleccionados;
+      });
+    }
+  }
+
+  Future<void> _seleccionarRefrigerios() async {
+    final refrigerios = ref.read(refrigeriosProvider).value ?? [];
+    final seleccionados = await showDialog<Set<String>>(
+      context: context,
+      builder: (_) => _SeleccionDialog<Refrigerio>(
+        titulo: 'Seleccionar refrigerios',
+        elementos: refrigerios,
+        seleccionInicial: _refrigeriosSeleccionados,
+        labelBuilder: (r) => r.nombre,
+        descripcionBuilder: (r) => r.descripcion,
+        idBuilder: (r) => r.id,
+      ),
+    );
+
+    if (seleccionados != null) {
+      setState(() {
+        _refrigeriosSeleccionados = seleccionados;
+      });
+    }
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
-
     setState(() => _isLoading = true);
 
     final nombre = _nombreController.text.trim();
@@ -95,9 +138,6 @@ class _SalonFormState extends ConsumerState<SalonForm> {
 
   @override
   Widget build(BuildContext context) {
-    final serviciosAsync = ref.watch(serviciosProvider);
-    final refrigeriosAsync = ref.watch(refrigeriosProvider);
-
     return AbsorbPointer(
       absorbing: _isLoading,
       child: AlertDialog(
@@ -111,8 +151,7 @@ class _SalonFormState extends ConsumerState<SalonForm> {
                 TextFormField(
                   controller: _nombreController,
                   decoration: const InputDecoration(labelText: 'Nombre del salón'),
-                  validator: (value) =>
-                      (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
+                  validator: (value) => (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -143,55 +182,19 @@ class _SalonFormState extends ConsumerState<SalonForm> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 20),
-                serviciosAsync.when(
-                  data: (servicios) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Servicios incluidos', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ...servicios.map((servicio) => CheckboxListTile(
-                            title: Text(servicio.nombre),
-                            subtitle: Text(servicio.descripcion),
-                            value: _serviciosSeleccionados.contains(servicio.id),
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  _serviciosSeleccionados.add(servicio.id);
-                                } else {
-                                  _serviciosSeleccionados.remove(servicio.id);
-                                }
-                              });
-                            },
-                          )),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error cargando servicios: $e')),
+                ElevatedButton.icon(
+                  onPressed: _seleccionarServicios,
+                  icon: const Icon(Icons.miscellaneous_services),
+                  label: const Text('Seleccionar servicios incluidos'),
                 ),
-                refrigeriosAsync.when(
-                  data: (refrigerios) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Refrigerios', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ...refrigerios.map((r) => CheckboxListTile(
-                            title: Text(r.nombre),
-                            subtitle: Text(r.descripcion),
-                            value: _refrigeriosSeleccionados.contains(r.id),
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  _refrigeriosSeleccionados.add(r.id);
-                                } else {
-                                  _refrigeriosSeleccionados.remove(r.id);
-                                }
-                              });
-                            },
-                          )),
-                    ],
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error cargando refrigerios: $e')),
+                Text('${_serviciosSeleccionados.length} seleccionados'),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _seleccionarRefrigerios,
+                  icon: const Icon(Icons.fastfood),
+                  label: const Text('Seleccionar refrigerios'),
                 ),
+                Text('${_refrigeriosSeleccionados.length} seleccionados'),
               ],
             ),
           ),
@@ -213,6 +216,92 @@ class _SalonFormState extends ConsumerState<SalonForm> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SeleccionDialog<T> extends StatefulWidget {
+  final String titulo;
+  final List<T> elementos;
+  final Set<String> seleccionInicial;
+  final String Function(T) labelBuilder;
+  final String Function(T) descripcionBuilder;
+  final String Function(T) idBuilder;
+
+  const _SeleccionDialog({
+    required this.titulo,
+    required this.elementos,
+    required this.seleccionInicial,
+    required this.labelBuilder,
+    required this.descripcionBuilder,
+    required this.idBuilder,
+  });
+
+  @override
+  State<_SeleccionDialog<T>> createState() => _SeleccionDialogState<T>();
+}
+
+class _SeleccionDialogState<T> extends State<_SeleccionDialog<T>> {
+  late Set<String> seleccion;
+  String _filtro = '';
+
+  @override
+  void initState() {
+    super.initState();
+    seleccion = {...widget.seleccionInicial};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final elementosFiltrados = widget.elementos.where((e) {
+      final texto = (widget.labelBuilder(e) + widget.descripcionBuilder(e)).toLowerCase();
+      return texto.contains(_filtro.toLowerCase());
+    }).toList();
+
+    return AlertDialog(
+      title: Text(widget.titulo),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Buscar...',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => _filtro = value),
+            ),
+            const SizedBox(height: 12),
+            ...elementosFiltrados.map((e) {
+              final id = widget.idBuilder(e);
+              return CheckboxListTile(
+                title: Text(widget.labelBuilder(e)),
+                subtitle: Text(widget.descripcionBuilder(e)),
+                value: seleccion.contains(id),
+                onChanged: (checked) {
+                  setState(() {
+                    if (checked == true) {
+                      seleccion.add(id);
+                    } else {
+                      seleccion.remove(id);
+                    }
+                  });
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, seleccion),
+          child: const Text('Aceptar'),
+        ),
+      ],
     );
   }
 }
