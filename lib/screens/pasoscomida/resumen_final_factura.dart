@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 
-class ResumenFinalPage extends StatefulWidget {
+class ResumenFinalComidaPage extends StatefulWidget {
   final String idCotizacion;
   final String nombreCliente;
   final String ciCliente;
 
-  const ResumenFinalPage({
+  const ResumenFinalComidaPage({
     super.key,
     required this.idCotizacion,
     required this.nombreCliente,
@@ -15,10 +14,10 @@ class ResumenFinalPage extends StatefulWidget {
   });
 
   @override
-  State<ResumenFinalPage> createState() => _ResumenFinalPageState();
+  State<ResumenFinalComidaPage> createState() => _ResumenFinalComidaPageState();
 }
 
-class _ResumenFinalPageState extends State<ResumenFinalPage> {
+class _ResumenFinalComidaPageState extends State<ResumenFinalComidaPage> {
   final supabase = Supabase.instance.client;
 
   String? nombreHotel;
@@ -65,7 +64,6 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
 
       final itemsList = List<Map<String, dynamic>>.from(itemsResponse);
 
-      // Calcular total
       double total = 0;
       for (final item in itemsList) {
         final cantidad = item['cantidad'] ?? 0;
@@ -89,25 +87,6 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
   }
 
   Widget _buildItem(Map<String, dynamic> item, int index) {
-    final detalles = item['detalles'] as Map<String, dynamic>? ?? {};
-    final fechaIngreso = detalles['fecha_ingreso'];
-    final fechaSalida = detalles['fecha_salida'];
-
-    String ingreso = '-';
-    String salida = '-';
-
-    try {
-      if (fechaIngreso != null) {
-        ingreso = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaIngreso));
-      }
-    } catch (_) {}
-
-    try {
-      if (fechaSalida != null) {
-        salida = DateFormat('dd-MM-yyyy').format(DateTime.parse(fechaSalida));
-      }
-    } catch (_) {}
-
     final cantidad = item['cantidad'] ?? 0;
     final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
     final subtotal = cantidad * precioUnitario;
@@ -125,8 +104,6 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ingreso: $ingreso'),
-            Text('Salida: $salida'),
             Text('Cantidad: $cantidad'),
             Text('Precio Unitario: Bs ${precioUnitario.toStringAsFixed(2)}'),
           ],
@@ -165,7 +142,7 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
                             height: 100,
                             fit: BoxFit.contain,
                             errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.hotel, size: 100, color: Colors.grey),
+                                const Icon(Icons.restaurant_menu, size: 100, color: Colors.grey),
                           ),
                         ),
                       const SizedBox(height: 12),
@@ -221,7 +198,6 @@ class _ResumenFinalPageState extends State<ResumenFinalPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Botones PDF / Enviar correo
                       ElevatedButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(

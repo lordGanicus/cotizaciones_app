@@ -1,174 +1,135 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/cotizacion_habitacion.dart';
+import '../../providers/cotizacion_habitacion_provider.dart';
 import 'crear_cotizacion_habitacion_step4.dart';
+import 'seleccionar_habitacion_modal.dart';
 
-class PasoResumenPage extends StatefulWidget {
+class PasoResumenHabitacionesPage extends ConsumerWidget {
   final String idCotizacion;
-  final int cantidad;
-  final String tipoHabitacion;
-  final DateTime fechaIngreso;
-  final DateTime fechaSalida;
   final String nombreCliente;
   final String ciCliente;
 
-  const PasoResumenPage({
+  const PasoResumenHabitacionesPage({
     super.key,
     required this.idCotizacion,
-    required this.cantidad,
-    required this.tipoHabitacion,
-    required this.fechaIngreso,
-    required this.fechaSalida,
     required this.nombreCliente,
     required this.ciCliente,
   });
 
-  @override
-  State<PasoResumenPage> createState() => _PasoResumenPageState();
-}
-
-class _PasoResumenPageState extends State<PasoResumenPage> {
-  late final TextEditingController _precioRegularController;
-  late final TextEditingController _precioEspecialController;
-
-  @override
-  void initState() {
-    super.initState();
-    _precioRegularController = TextEditingController();
-    _precioEspecialController = TextEditingController();
+  double _calcularTotal(List<CotizacionHabitacion> habitaciones) {
+    return habitaciones.fold(0, (sum, h) => sum + h.subtotal);
   }
 
   @override
-  void dispose() {
-    _precioRegularController.dispose();
-    _precioEspecialController.dispose();
-    super.dispose();
-  }
-
-  int get cantidadNoches =>
-      widget.fechaSalida.difference(widget.fechaIngreso).inDays;
-
-  double get precioRegular =>
-      double.tryParse(_precioRegularController.text) ?? 0.0;
-
-  double get precioEspecial =>
-      double.tryParse(_precioEspecialController.text) ?? 0.0;
-
-  void _continuar() {
-    if (precioRegular <= 0 || precioEspecial <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingrese precios válidos mayor a 0'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PasoConfirmarPage(
-          idCotizacion: widget.idCotizacion,
-          cantidadHabitaciones: widget.cantidad,
-          tipoHabitacion: widget.tipoHabitacion,
-          fechaIngreso: widget.fechaIngreso,
-          fechaSalida: widget.fechaSalida,
-          precioRegular: precioRegular,
-          precioEspecial: precioEspecial,
-          nombreCliente: widget.nombreCliente,
-          ciCliente: widget.ciCliente,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final formato = DateFormat('dd/MM/yyyy');
-    final primaryColor = Theme.of(context).colorScheme.primary;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final habitaciones = ref.watch(cotizacionHabitacionProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paso 3 - Precios y Resumen'),
-        backgroundColor: primaryColor,
+        title: const Text('Paso 3 - Resumen de habitaciones'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Resumen de la habitación',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _itemResumen('Cliente', widget.nombreCliente),
-            _itemResumen('CI / NIT', widget.ciCliente),
-            _itemResumen('Habitación', widget.tipoHabitacion),
-            _itemResumen('Cantidad', '${widget.cantidad}'),
-            _itemResumen('Ingreso', formato.format(widget.fechaIngreso)),
-            _itemResumen('Salida', formato.format(widget.fechaSalida)),
-            _itemResumen('Noches', '$cantidadNoches'),
-            const Divider(height: 32),
-            const Text('Precios por noche',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _precioRegularController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Precio Regular',
-                prefixText: 'Bs ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _precioEspecialController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Precio Especial',
-                prefixText: 'Bs ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-              ),
-            ),
-            const Spacer(),
             ElevatedButton.icon(
-              onPressed: _continuar,
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Siguiente'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                textStyle: const TextStyle(fontSize: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => const SeleccionarHabitacionModal(),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar habitación'),
+            ),
+            const SizedBox(height: 16),
+
+            habitaciones.isEmpty
+                ? const Text('No se han agregado habitaciones.')
+                : Expanded(
+                    child: ListView.builder(
+                      itemCount: habitaciones.length,
+                      itemBuilder: (context, index) {
+                        final hab = habitaciones[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                          child: ListTile(
+                            title: Text(
+                              hab.nombreHabitacion,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${hab.cantidad} habs · ${hab.cantidadNoches} noches\n'
+                              'Ingreso: ${_formatDate(hab.fechaIngreso)} · Salida: ${_formatDate(hab.fechaSalida)}\n'
+                              'Tarifa: Bs ${hab.tarifa.toStringAsFixed(2)}',
+                            ),
+                            trailing: Text(
+                              'Bs ${hab.subtotal.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            isThreeLine: true,
+                            leading: CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+            const SizedBox(height: 16),
+
+            if (habitaciones.isNotEmpty)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Bs ${_calcularTotal(habitaciones).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 16),
+
+            if (habitaciones.isNotEmpty)
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PasoConfirmarHabitacionPage(
+                        idCotizacion: idCotizacion,
+                        nombreCliente: nombreCliente,
+                        ciCliente: ciCliente,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.navigate_next),
+                label: const Text('Confirmar habitaciones y continuar'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _itemResumen(String titulo, String valor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(flex: 4, child: Text('$titulo:', style: const TextStyle(fontWeight: FontWeight.w600))),
-          Expanded(flex: 6, child: Text(valor)),
-        ],
-      ),
-    );
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }

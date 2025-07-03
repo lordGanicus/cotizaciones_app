@@ -1,160 +1,158 @@
 import 'package:flutter/material.dart';
-import 'package:cotizaciones_app/screens/pasos/crear_cotizacion_habitacion_step3.dart';
-import 'package:intl/intl.dart'; // Para dar formato bonito a las fechas
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/cotizacion_habitacion.dart';
+import '../../providers/cotizacion_habitacion_provider.dart';
+import 'seleccionar_habitacion_modal.dart';
+import 'crear_cotizacion_habitacion_step3.dart';
 
-class PasoFechaPage extends StatefulWidget {
+class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
   final String idCotizacion;
-  final int cantidad;
-  final String tipoHabitacion;
   final String nombreCliente;
   final String ciCliente;
 
-  const PasoFechaPage({
+  const CrearCotizacionHabitacionStep2({
     super.key,
     required this.idCotizacion,
-    required this.cantidad,
-    required this.tipoHabitacion,
     required this.nombreCliente,
     required this.ciCliente,
   });
 
   @override
-  State<PasoFechaPage> createState() => _PasoFechaPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final habitaciones = ref.watch(cotizacionHabitacionProvider);
 
-class _PasoFechaPageState extends State<PasoFechaPage> {
-  DateTime? _fechaIngreso;
-  DateTime? _fechaSalida;
-
-  Future<void> _seleccionarFechaIngreso() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaIngreso ?? now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 2),
+    final totalCotizacion = habitaciones.fold<double>(
+      0.0,
+      (sum, hab) => sum + (hab.tarifa * hab.cantidadNoches * hab.cantidad),
     );
-    if (picked != null) {
-      setState(() {
-        _fechaIngreso = picked;
-        if (_fechaSalida != null && _fechaSalida!.isBefore(picked)) {
-          _fechaSalida = null;
-        }
-      });
-    }
-  }
 
-  Future<void> _seleccionarFechaSalida() async {
-    if (_fechaIngreso == null) return;
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fechaSalida ?? _fechaIngreso!.add(const Duration(days: 1)),
-      firstDate: _fechaIngreso!,
-      lastDate: DateTime(_fechaIngreso!.year + 2),
-    );
-    if (picked != null) {
-      setState(() => _fechaSalida = picked);
-    }
-  }
-
-  int get cantidadNoches {
-    if (_fechaIngreso != null && _fechaSalida != null) {
-      return _fechaSalida!.difference(_fechaIngreso!).inDays;
-    }
-    return 0;
-  }
-
-  String _formatearFecha(DateTime fecha) {
-    return DateFormat('dd/MM/yyyy').format(fecha);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final fechaOk = _fechaIngreso != null && _fechaSalida != null && cantidadNoches > 0;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paso 2 - Fechas de Hospedaje'),
+        title: const Text('Paso 2 - Agregar Habitaciones'),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            ListTile(
-              leading: const Icon(Icons.calendar_today_outlined),
-              title: const Text('Fecha de ingreso'),
-              subtitle: Text(
-                _fechaIngreso != null ? _formatearFecha(_fechaIngreso!) : 'No seleccionada',
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit_calendar),
-                onPressed: _seleccionarFechaIngreso,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Fecha de salida'),
-              subtitle: Text(
-                _fechaSalida != null ? _formatearFecha(_fechaSalida!) : 'No seleccionada',
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit_calendar),
-                onPressed: _fechaIngreso == null ? null : _seleccionarFechaSalida,
-              ),
+            Text(
+              'Cliente: $nombreCliente\nCI: $ciCliente',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            if (fechaOk)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.night_shelter_outlined),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Cantidad de noches: $cantidadNoches',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            const Spacer(),
-            ElevatedButton.icon(
-              onPressed: fechaOk
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PasoResumenPage(
-                            idCotizacion: widget.idCotizacion,
-                            cantidad: widget.cantidad,
-                            tipoHabitacion: widget.tipoHabitacion,
-                            fechaIngreso: _fechaIngreso!,
-                            fechaSalida: _fechaSalida!,
-                            nombreCliente: widget.nombreCliente,
-                            ciCliente: widget.ciCliente,
+
+            Expanded(
+              child: habitaciones.isEmpty
+                  ? const Center(child: Text('No hay habitaciones agregadas aún.'))
+                  : ListView.builder(
+                      itemCount: habitaciones.length,
+                      itemBuilder: (context, index) {
+                        final hab = habitaciones[index];
+                        final subtotal = hab.tarifa * hab.cantidadNoches * hab.cantidad;
+
+                        return Card(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 3,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          child: ListTile(
+                            title: Text(hab.nombreHabitacion, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                              'Cantidad: ${hab.cantidad}\n'
+                              'Ingreso: ${_formatDate(hab.fechaIngreso)}\n'
+                              'Salida: ${_formatDate(hab.fechaSalida)}\n'
+                              'Noches: ${hab.cantidadNoches}\n'
+                              'Tarifa: Bs ${hab.tarifa.toStringAsFixed(2)}',
+                            ),
+                            trailing: Text(
+                              'Bs ${subtotal.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
+                        );
+                      },
+                    ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Text('Total: Bs ${totalCotizacion.toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor)),
+
+            const SizedBox(height: 24),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Volver'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => const SeleccionarHabitacionModal(),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar Habitación'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Botón continuar solo si hay habitaciones
+            if (habitaciones.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PasoResumenHabitacionesPage(
+                          idCotizacion: idCotizacion,
+                          nombreCliente: nombreCliente,
+                          ciCliente: ciCliente,
                         ),
-                      );
-                    }
-                  : null,
-              icon: const Icon(Icons.navigate_next),
-              label: const Text('Siguiente'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 16),
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.navigate_next),
+                  label: const Text('Continuar'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    textStyle: const TextStyle(fontSize: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }

@@ -26,22 +26,10 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
   bool isLoading = true;
   String? error;
 
-  late TextEditingController cantidadController;
-  late TextEditingController tarifaController;
-
   @override
   void initState() {
     super.initState();
-    cantidadController = TextEditingController(text: cantidad.toString());
-    tarifaController = TextEditingController();
     _cargarHabitacionesUsuario();
-  }
-
-  @override
-  void dispose() {
-    cantidadController.dispose();
-    tarifaController.dispose();
-    super.dispose();
   }
 
   Future<void> _cargarHabitacionesUsuario() async {
@@ -54,7 +42,6 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
       final user = supabase.auth.currentUser;
       if (user == null) throw 'Usuario no logueado';
 
-      // Obtener id_establecimiento del usuario
       final usuarioRes = await supabase
           .from('usuarios')
           .select('id_establecimiento')
@@ -63,7 +50,6 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
 
       final idEstablecimiento = usuarioRes['id_establecimiento'] as String;
 
-      // Traer habitaciones del establecimiento
       final habitacionesRes = await supabase
           .from('habitaciones')
           .select()
@@ -123,12 +109,7 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
   }
 
   void _agregarHabitacion() {
-    if (habitacionSeleccionadaId == null ||
-        fechaIngreso == null ||
-        fechaSalida == null ||
-        tarifa == null ||
-        tarifa! <= 0 ||
-        cantidad <= 0) {
+    if (habitacionSeleccionadaId == null || fechaIngreso == null || fechaSalida == null || tarifa == null || tarifa! <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor complete todos los campos y tarifa válida')),
       );
@@ -173,12 +154,10 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         items: habitaciones
-                            .map<DropdownMenuItem<String>>(
-                              (h) => DropdownMenuItem<String>(
-                                value: h['id'] as String,
-                                child: Text(h['nombre'] as String),
-                              ),
-                            )
+                            .map((h) => DropdownMenuItem<String>(
+                                  value: h['id'],
+                                  child: Text(h['nombre']),
+                                ))
                             .toList(),
                         onChanged: (v) => setState(() => habitacionSeleccionadaId = v),
                       ),
@@ -187,7 +166,6 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
                         children: [
                           Expanded(
                             child: TextField(
-                              controller: cantidadController,
                               decoration: const InputDecoration(
                                 labelText: 'Cantidad',
                                 border: OutlineInputBorder(),
@@ -199,17 +177,17 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
                                   setState(() => cantidad = val);
                                 }
                               },
+                              controller: TextEditingController(text: cantidad.toString()),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
-                              controller: tarifaController,
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 labelText: 'Tarifa (Bs por noche)',
                                 border: OutlineInputBorder(),
                               ),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                               onChanged: (v) {
                                 final val = double.tryParse(v);
                                 if (val != null && val > 0) {
@@ -222,19 +200,31 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
                       ),
                       const SizedBox(height: 12),
                       ListTile(
-                        title: Text(fechaIngreso != null ? DateFormat('dd/MM/yyyy').format(fechaIngreso!) : 'Fecha de ingreso'),
+                        title: Text(fechaIngreso != null
+                            ? DateFormat('dd/MM/yyyy').format(fechaIngreso!)
+                            : 'Fecha de ingreso'),
                         trailing: IconButton(
                           icon: const Icon(Icons.calendar_today),
                           onPressed: _seleccionarFechaIngreso,
                         ),
                       ),
                       ListTile(
-                        title: Text(fechaSalida != null ? DateFormat('dd/MM/yyyy').format(fechaSalida!) : 'Fecha de salida'),
+                        title: Text(fechaSalida != null
+                            ? DateFormat('dd/MM/yyyy').format(fechaSalida!)
+                            : 'Fecha de salida'),
                         trailing: IconButton(
                           icon: const Icon(Icons.calendar_today),
                           onPressed: fechaIngreso == null ? null : _seleccionarFechaSalida,
                         ),
                       ),
+                      if (cantidadNoches > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Cantidad de noches: $cantidadNoches',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                     ],
                   ),
                 ),

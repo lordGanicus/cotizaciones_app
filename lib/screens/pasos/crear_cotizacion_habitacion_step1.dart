@@ -1,53 +1,92 @@
 import 'package:flutter/material.dart';
-import 'package:cotizaciones_app/screens/pasos/crear_cotizacion_habitacion_step2.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'crear_cotizacion_habitacion_step2.dart';
 
-class PasoCantidadPage extends StatefulWidget {
+class CrearCotizacionHabitacionStep1 extends StatefulWidget {
   final String idCotizacion;
 
-  const PasoCantidadPage({super.key, required this.idCotizacion});
+  const CrearCotizacionHabitacionStep1({super.key, required this.idCotizacion});
 
   @override
-  State<PasoCantidadPage> createState() => _PasoCantidadPageState();
+  State<CrearCotizacionHabitacionStep1> createState() => _CrearCotizacionHabitacionStep1State();
 }
 
-class _PasoCantidadPageState extends State<PasoCantidadPage> {
-  final _tipos = [
-    'Suite simple',
-    'Doble',
-    'Triple',
-    'Matrimonial',
-    'Ejecutiva',
-    'Ejecutiva matrimonial',
-  ];
-
-  String? _tipoSeleccionado;
-  int _cantidad = 1;
+class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitacionStep1> {
+  final supabase = Supabase.instance.client;
 
   final TextEditingController _nombreClienteController = TextEditingController();
   final TextEditingController _ciClienteController = TextEditingController();
 
-  final supabase = Supabase.instance.client;
+  String? nombreEstablecimiento;
+  bool isLoading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarEstablecimientoUsuario();
+  }
+
+  Future<void> _cargarEstablecimientoUsuario() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) throw 'Usuario no logueado';
+
+      final usuarioRes = await supabase
+          .from('usuarios')
+          .select('id_establecimiento')
+          .eq('id', user.id)
+          .single();
+
+      final idEstablecimiento = usuarioRes['id_establecimiento'] as String;
+
+      final establecimientoRes = await supabase
+          .from('establecimientos')
+          .select('nombre')
+          .eq('id', idEstablecimiento)
+          .single();
+
+      setState(() {
+        nombreEstablecimiento = establecimientoRes['nombre'] as String?;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        error = 'Error cargando establecimiento: $e';
+        isLoading = false;
+      });
+    }
+  }
 
   Future<void> _guardarClienteYContinuar() async {
     final nombre = _nombreClienteController.text.trim();
     final ci = _ciClienteController.text.trim();
 
-    if (nombre.isEmpty) return;
+    if (nombre.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor ingrese el nombre del cliente')),
+      );
+      return;
+    }
 
     try {
+      // Upsert cliente (evita duplicados por CI)
       await supabase.from('clientes').upsert({
-        'ci': ci,
+        'ci': ci.isEmpty ? null : ci,
         'nombre_completo': nombre,
       });
 
+      // Continuar al paso 2 - selección de habitaciones
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PasoFechaPage(
+          builder: (context) => CrearCotizacionHabitacionStep2(
             idCotizacion: widget.idCotizacion,
-            cantidad: _cantidad,
-            tipoHabitacion: _tipoSeleccionado!,
             nombreCliente: nombre,
             ciCliente: ci,
           ),
@@ -70,110 +109,70 @@ class _PasoCantidadPageState extends State<PasoCantidadPage> {
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Cotización ID: ${widget.idCotizacion}',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-
-            TextField(
-              controller: _nombreClienteController,
-              decoration: InputDecoration(
-                labelText: 'Nombre del cliente',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _ciClienteController,
-              decoration: InputDecoration(
-                labelText: 'CI / NIT (opcional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.badge_outlined),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
-
-            DropdownButtonFormField<String>(
-              value: _tipoSeleccionado,
-              decoration: InputDecoration(
-                labelText: 'Tipo de habitación',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.hotel_outlined),
-              ),
-              items: _tipos
-                  .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
-                  .toList(),
-              onChanged: (value) {
-                setState(() => _tipoSeleccionado = value);
-              },
-            ),
-            const SizedBox(height: 24),
-
-            Text('Cantidad de habitaciones', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.filled(
-                  onPressed: () {
-                    if (_cantidad > 1) {
-                      setState(() => _cantidad--);
-                    }
-                  },
-                  icon: const Icon(Icons.remove),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
+              ? Center(child: Text(error!))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (nombreEstablecimiento != null)
+                        Text(
+                          'Hotel: $nombreEstablecimiento',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _nombreClienteController,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre del cliente',
+                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _ciClienteController,
+                        decoration: InputDecoration(
+                          labelText: 'CI / NIT (opcional)',
+                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.badge_outlined),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton.icon(
+                        onPressed: _guardarClienteYContinuar,
+                        icon: const Icon(Icons.navigate_next),
+                        label: const Text('Siguiente'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(fontSize: 16),
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancelar'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(fontSize: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text('$_cantidad', style: const TextStyle(fontSize: 24)),
-                ),
-                IconButton.filled(
-                  onPressed: () => setState(() => _cantidad++),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            ElevatedButton.icon(
-              onPressed: _tipoSeleccionado == null || _nombreClienteController.text.trim().isEmpty
-                  ? null
-                  : _guardarClienteYContinuar,
-              icon: const Icon(Icons.navigate_next),
-              label: const Text('Siguiente'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 16),
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.close),
-              label: const Text('Cancelar'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,109 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'crear_cotizacion_habitacion_step1.dart';
+import '../../models/cotizacion_habitacion.dart';
+import '../../providers/cotizacion_habitacion_provider.dart';
 import 'resumen_final_factura.dart';
 
-class PasoConfirmarPage extends StatelessWidget {
+class PasoConfirmarHabitacionPage extends ConsumerWidget {
   final String idCotizacion;
-  final int cantidadHabitaciones;
-  final String tipoHabitacion;
-  final DateTime fechaIngreso;
-  final DateTime fechaSalida;
-  final double precioRegular;
-  final double precioEspecial;
   final String nombreCliente;
   final String ciCliente;
 
-  const PasoConfirmarPage({
+  const PasoConfirmarHabitacionPage({
     super.key,
     required this.idCotizacion,
-    required this.cantidadHabitaciones,
-    required this.tipoHabitacion,
-    required this.fechaIngreso,
-    required this.fechaSalida,
-    required this.precioRegular,
-    required this.precioEspecial,
     required this.nombreCliente,
     required this.ciCliente,
   });
 
-  int _calcularNoches() {
-    return fechaSalida.difference(fechaIngreso).inDays;
-  }
-
-  Future<void> _guardarEnBaseDeDatos(BuildContext context) async {
-    final noches = _calcularNoches();
+  Future<void> _guardarEnSupabase(BuildContext context, WidgetRef ref) async {
     final supabase = Supabase.instance.client;
+    final habitaciones = ref.read(cotizacionHabitacionProvider);
 
-    final descripcion =
-        'Reserva del ${DateFormat('dd-MM-yy').format(fechaIngreso)} al ${DateFormat('dd-MM-yy').format(fechaSalida)}';
-
-    final detalles = {
-      "fecha_ingreso": fechaIngreso.toIso8601String(),
-      "fecha_salida": fechaSalida.toIso8601String(),
-      "precio_regular": precioRegular,
-      "precio_especial": precioEspecial,
-      "tipo": tipoHabitacion,
-      "noches": noches,
-      "cantidad_habitaciones": cantidadHabitaciones,
-    };
-
-    final total = noches * cantidadHabitaciones * precioEspecial;
+    if (habitaciones.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agrega al menos una habitación antes de continuar')),
+      );
+      return;
+    }
 
     try {
-      await supabase.from('items_cotizacion').insert({
-        'id_cotizacion': idCotizacion,
-        'servicio': 'Hab. $tipoHabitacion',
-        'unidad': 'Noche',
-        'cantidad': noches * cantidadHabitaciones,
-        'precio_unitario': precioEspecial,
-        'descripcion': descripcion,
-        'detalles': detalles,
-      });
+      for (final habitacion in habitaciones) {
+        final total = habitacion.cantidad * habitacion.tarifa * habitacion.cantidadNoches;
 
+        final detalles = {
+          'nombre_habitacion': habitacion.nombreHabitacion,
+          'cantidad': habitacion.cantidad,
+          'fecha_ingreso': habitacion.fechaIngreso.toIso8601String(),
+          'fecha_salida': habitacion.fechaSalida.toIso8601String(),
+          'cantidad_noches': habitacion.cantidadNoches,
+          'tarifa': habitacion.tarifa,
+          'subtotal': total,
+        };
+
+        final descripcion =
+            'Del ${DateFormat('dd/MM/yyyy').format(habitacion.fechaIngreso)} al ${DateFormat('dd/MM/yyyy').format(habitacion.fechaSalida)} - ${habitacion.cantidad} x ${habitacion.nombreHabitacion}';
+
+        await supabase.from('items_cotizacion').insert({
+          'id_cotizacion': idCotizacion,
+          'servicio': 'Hab. ${habitacion.nombreHabitacion}',
+          'unidad': 'Noche',
+          'cantidad': habitacion.cantidad * habitacion.cantidadNoches,
+          'precio_unitario': habitacion.tarifa,
+          'descripcion': descripcion,
+          'detalles': detalles,
+        });
+      }
+
+      // Vaciar lista luego de guardar
+      ref.read(cotizacionHabitacionProvider.notifier).limpiar();
+
+      // Ir al resumen final
       if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('✅ Habitación registrada'),
-            content: const Text('¿Qué deseas hacer ahora?'),
-            actions: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => PasoCantidadPage(
-                        idCotizacion: idCotizacion,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar otra habitación'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => ResumenFinalPage(
-                        idCotizacion: idCotizacion,
-                        nombreCliente: nombreCliente,
-                        ciCliente: ciCliente,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.receipt_long),
-                label: const Text('Ver resumen'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResumenFinalPage(
+              idCotizacion: idCotizacion,
+              nombreCliente: nombreCliente,
+              ciCliente: ciCliente,
+            ),
           ),
         );
       }
@@ -117,72 +83,67 @@ class PasoConfirmarPage extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final noches = _calcularNoches();
-    final total = noches * cantidadHabitaciones * precioEspecial;
-    final formato = DateFormat('dd/MM/yyyy');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final habitaciones = ref.watch(cotizacionHabitacionProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paso 4 - Confirmación'),
+        title: const Text('Paso 4 - Confirmar habitaciones'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Resumen de habitación',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _infoRow('Tipo', 'Hab. $tipoHabitacion'),
-            _infoRow('Cantidad', '$cantidadHabitaciones'),
-            _infoRow('Ingreso', formato.format(fechaIngreso)),
-            _infoRow('Salida', formato.format(fechaSalida)),
-            _infoRow('Noches', '$noches'),
-            _infoRow('Precio especial', 'Bs ${precioEspecial.toStringAsFixed(2)}'),
-            const Divider(height: 32),
-            _infoRow('Total estimado', 'Bs ${total.toStringAsFixed(2)}',
-                bold: true, large: true),
-            const Spacer(),
+            Expanded(
+              child: habitaciones.isEmpty
+                  ? const Center(child: Text('No se agregaron habitaciones.'))
+                  : ListView.builder(
+                      itemCount: habitaciones.length,
+                      itemBuilder: (context, index) {
+                        final h = habitaciones[index];
+                        final subtotal = h.tarifa * h.cantidad * h.cantidadNoches;
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: ListTile(
+                            title: Text(h.nombreHabitacion, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Cantidad: ${h.cantidad}'),
+                                Text('Ingreso: ${DateFormat('dd/MM/yyyy').format(h.fechaIngreso)}'),
+                                Text('Salida: ${DateFormat('dd/MM/yyyy').format(h.fechaSalida)}'),
+                                Text('Noches: ${h.cantidadNoches}'),
+                                Text('Tarifa: Bs ${h.tarifa.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                            trailing: Text(
+                              'Bs ${subtotal.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: () => _guardarEnBaseDeDatos(context),
+              onPressed: () => _guardarEnSupabase(context, ref),
               icon: const Icon(Icons.save_alt),
-              label: const Text('Confirmar y guardar'),
+              label: const Text('Guardar cotización'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(fontSize: 16),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-                textStyle: const TextStyle(fontSize: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value, {bool bold = false, bool large = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(flex: 4, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))),
-          Expanded(
-            flex: 6,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-                fontSize: large ? 18 : 14,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+/*
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import 'cotizacion.dart';
@@ -93,4 +94,4 @@ class BienvenidaPage extends StatelessWidget {
       ),
     );
   }
-}
+}*/

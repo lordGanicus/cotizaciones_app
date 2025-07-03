@@ -9,8 +9,8 @@ class Salon {
   final String? descripcion;
   final DateTime createdAt;
 
-  final List<ServicioIncluido> servicios; // ✅ Agregado
-  final List<Refrigerio> refrigerios;     // ✅ Agregado
+  final List<ServicioIncluido> servicios; 
+  final List<Refrigerio> refrigerios;     
 
   Salon({
     required this.id,
@@ -19,8 +19,8 @@ class Salon {
     required this.capacidadSillas,
     this.descripcion,
     required this.createdAt,
-    required this.servicios,     // ✅ requerido
-    required this.refrigerios,   // ✅ requerido
+    required this.servicios,     
+    required this.refrigerios,   
   });
 
   factory Salon.fromMap(
@@ -35,8 +35,8 @@ class Salon {
       capacidadSillas: map['capacidad_sillas'],
       descripcion: map['descripcion'],
       createdAt: DateTime.parse(map['created_at']),
-      servicios: servicios,        // ✅
-      refrigerios: refrigerios,    // ✅
+      servicios: servicios,        
+      refrigerios: refrigerios,    
     );
   }
 }
