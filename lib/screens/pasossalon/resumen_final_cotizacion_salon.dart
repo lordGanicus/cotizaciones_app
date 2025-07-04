@@ -8,18 +8,18 @@ class ResumenFinalCotizacionSalonPage extends StatefulWidget {
   final String ciCliente;
 
   const ResumenFinalCotizacionSalonPage({
-    super.key,
+    Key? key,
     required this.idCotizacion,
     required this.nombreCliente,
     required this.ciCliente,
-  });
+  }) : super(key: key);
 
   @override
   State<ResumenFinalCotizacionSalonPage> createState() => _ResumenFinalCotizacionSalonPageState();
 }
 
 class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacionSalonPage> {
-  final supabase = Supabase.instance.client;
+  late final SupabaseClient supabase;
 
   String? nombreHotel;
   String? logoHotel;
@@ -32,6 +32,7 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
   @override
   void initState() {
     super.initState();
+    supabase = Supabase.instance.client;
     _loadData();
   }
 
@@ -45,18 +46,15 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
       final user = supabase.auth.currentUser;
       if (user == null) throw 'Usuario no autenticado';
 
-      // Obtener id_establecimiento del usuario
       final usuarioResp = await supabase
           .from('usuarios')
           .select('id_establecimiento')
           .eq('id', user.id)
           .single();
 
-      final idEstablecimiento = usuarioResp['id_establecimiento'] as String?;
+      final idEstablecimiento = usuarioResp['id_establecimiento'];
+      if (idEstablecimiento == null) throw 'Establecimiento no encontrado';
 
-      if (idEstablecimiento == null) throw 'No se encontró establecimiento para el usuario';
-
-      // Obtener datos del establecimiento (hotel)
       final establecimientoResp = await supabase
           .from('establecimientos')
           .select('nombre, logotipo')
@@ -66,7 +64,6 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
       nombreHotel = establecimientoResp['nombre'] as String?;
       logoHotel = establecimientoResp['logotipo'] as String?;
 
-      // Obtener datos generales de la cotización (tabla cotizaciones)
       final cotizacionResp = await supabase
           .from('cotizaciones')
           .select()
@@ -75,7 +72,6 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
 
       cotizacionData = cotizacionResp;
 
-      // Obtener items de la cotización (tabla items_cotizacion)
       final itemsResp = await supabase
           .from('items_cotizacion')
           .select()
@@ -83,11 +79,23 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
 
       items = List<Map<String, dynamic>>.from(itemsResp);
 
-      // Calcular total sumando todos los items
-      totalFinal = items.fold<double>(
-          0,
-          (previousValue, item) =>
-              previousValue + (item['total'] != null ? (item['total'] as num).toDouble() : 0));
+      totalFinal = items.fold<double>(0, (prev, item) {
+        double totalItem = 0;
+        if (item.containsKey('total') && item['total'] != null) {
+          final val = item['total'];
+          if (val is num) {
+            totalItem = val.toDouble();
+          }
+        }
+        if (totalItem == 0) {
+          final cantidad = item['cantidad'] ?? 0;
+          final precioUnitario = item['precio_unitario'] ?? 0;
+          if (precioUnitario is num && cantidad is int) {
+            totalItem = precioUnitario.toDouble() * cantidad;
+          }
+        }
+        return prev + totalItem;
+      });
 
       setState(() {
         isLoading = false;
@@ -101,12 +109,11 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
   }
 
   String formatFecha(dynamic fecha) {
-    if (fecha == null) return 'No especificado';
     try {
-      final dt = DateTime.parse(fecha);
+      final dt = DateTime.parse(fecha.toString());
       return DateFormat('dd/MM/yyyy').format(dt);
     } catch (_) {
-      return fecha.toString();
+      return fecha?.toString() ?? 'N/D';
     }
   }
 
@@ -134,7 +141,7 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                             logoHotel!,
                             height: 100,
                             errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.business, size: 100, color: Colors.grey),
+                                const Icon(Icons.business, size: 100),
                           ),
                         ),
                       const SizedBox(height: 12),
@@ -147,26 +154,27 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                         ),
                       const SizedBox(height: 24),
 
-                      // Encabezado formal
                       Text('La Paz, ${DateFormat('dd/MM/yyyy').format(DateTime.now())}'),
                       const SizedBox(height: 4),
-                      Text('COT N°: ${widget.idCotizacion}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('COT N°: ${widget.idCotizacion}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 16),
                       Text('Señores:', style: const TextStyle(fontWeight: FontWeight.bold)),
                       Text(widget.nombreCliente),
-                      Text('Presente.-'),
+                      Text('CI: ${widget.ciCliente}'),
                       const SizedBox(height: 24),
 
-                      // Detalle evento (ajusta según datos reales)
-                      Text('DETALLES DEL EVENTO', style: Theme.of(context).textTheme.titleMedium),
+                      Text('DETALLES DEL EVENTO',
+                          style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Text('Fecha creación: ${cotizacionData != null ? formatFecha(cotizacionData!['fecha_creacion']) : 'N/D'}'),
+                      Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
                       Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
                       const SizedBox(height: 16),
 
-                      // Detalle ítems (tabla)
-                      Text('🧾 Detalle de la propuesta:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('🧾 Detalle de la propuesta:',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
+
                       Table(
                         border: TableBorder.all(color: Colors.grey.shade300),
                         columnWidths: const {
@@ -181,70 +189,107 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                             children: [
                               Padding(
                                 padding: EdgeInsets.all(8),
-                                child: Text('Descripción', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: Text('Descripción',
+                                    style: TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                               Padding(
                                 padding: EdgeInsets.all(8),
-                                child: Text('Cantidad', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: Text('Cantidad',
+                                    style: TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                               Padding(
                                 padding: EdgeInsets.all(8),
-                                child: Text('Precio Unitario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: Text('P. Unitario',
+                                    style: TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                               Padding(
                                 padding: EdgeInsets.all(8),
-                                child: Text('Total', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: Text('Total',
+                                    style: TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
                           ...items.map((item) {
-                            final desc = item['descripcion'] ?? item['servicio'] ?? 'Sin descripción';
+                            final desc = item['descripcion'] ?? 'Sin descripción';
                             final cantidad = item['cantidad'] ?? 0;
-                            final precioUnit = (item['precio_unitario'] ?? 0).toDouble();
-                            final totalItem = (item['total'] ?? cantidad * precioUnit).toDouble();
+                            final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+
+                            double totalItem = 0;
+                            if (item.containsKey('total') && item['total'] != null) {
+                              final val = item['total'];
+                              if (val is num) {
+                                totalItem = val.toDouble();
+                              }
+                            }
+                            if (totalItem == 0 && cantidad is int) {
+                              totalItem = precioUnitario * cantidad;
+                            }
 
                             return TableRow(
                               children: [
-                                Padding(padding: const EdgeInsets.all(8), child: Text(desc.toString())),
-                                Padding(padding: const EdgeInsets.all(8), child: Text(cantidad.toString())),
-                                Padding(padding: const EdgeInsets.all(8), child: Text('Bs ${precioUnit.toStringAsFixed(2)}')),
-                                Padding(padding: const EdgeInsets.all(8), child: Text('Bs ${totalItem.toStringAsFixed(2)}')),
+                                Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(desc.toString())),
+                                Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(cantidad.toString())),
+                                Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text('Bs ${precioUnitario.toStringAsFixed(2)}')),
+                                Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text('Bs ${totalItem.toStringAsFixed(2)}')),
                               ],
                             );
                           }),
                         ],
                       ),
+
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text('Total final: ', style: Theme.of(context).textTheme.headlineSmall),
+                          Text('Total final: ',
+                              style: Theme.of(context).textTheme.headlineSmall),
                           const SizedBox(width: 10),
-                          Text('Bs ${totalFinal.toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: primaryColor)),
+                          Text('Bs ${totalFinal.toStringAsFixed(2)}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(color: primaryColor)),
                         ],
                       ),
 
                       const SizedBox(height: 30),
-
                       ElevatedButton.icon(
                         onPressed: () {
-                          // TODO: Implementar exportar PDF
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Función exportar PDF en desarrollo')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Función exportar PDF en desarrollo'),
+                            ),
+                          );
                         },
                         icon: const Icon(Icons.picture_as_pdf),
                         label: const Text('Descargar PDF'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
                       ElevatedButton.icon(
                         onPressed: () {
-                          // TODO: Implementar enviar correo
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Función enviar correo en desarrollo')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Función enviar correo en desarrollo'),
+                            ),
+                          );
                         },
                         icon: const Icon(Icons.send),
                         label: const Text('Enviar por correo'),
@@ -252,7 +297,9 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ],

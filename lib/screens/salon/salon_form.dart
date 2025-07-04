@@ -3,14 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/salon.dart';
 import '../../models/servicio_incluido.dart';
-import '../../models/refrigerio.dart';
+// import '../../models/refrigerio.dart'; // eliminado import innecesario
 import '../../providers/salones_provider.dart';
 import '../../providers/servicios_provider.dart';
-import '../../providers/refrigerios_provider.dart';
+// import '../../providers/refrigerios_provider.dart'; // eliminado import innecesario
+import '../../providers/establecimiento_provider.dart'; // Provider que da lista de establecimientos
 
 class SalonForm extends ConsumerStatefulWidget {
   final Salon? salon;
-  const SalonForm({super.key, this.salon});
+
+  const SalonForm({
+    super.key,
+    this.salon,
+  });
 
   @override
   ConsumerState<SalonForm> createState() => _SalonFormState();
@@ -25,7 +30,9 @@ class _SalonFormState extends ConsumerState<SalonForm> {
   late TextEditingController _descripcionController;
 
   Set<String> _serviciosSeleccionados = {};
-  Set<String> _refrigeriosSeleccionados = {};
+  // Set<String> _refrigeriosSeleccionados = {}; // eliminado
+
+  String? _idEstablecimientoSeleccionado;
 
   bool _isLoading = false;
 
@@ -40,7 +47,9 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     _descripcionController = TextEditingController(text: salon?.descripcion ?? '');
 
     _serviciosSeleccionados = salon?.servicios.map((s) => s.id).toSet() ?? {};
-    _refrigeriosSeleccionados = salon?.refrigerios.map((r) => r.id).toSet() ?? {};
+    // _refrigeriosSeleccionados = salon?.refrigerios.map((r) => r.id).toSet() ?? {}; // eliminado
+
+    _idEstablecimientoSeleccionado = salon?.idEstablecimiento;
   }
 
   @override
@@ -73,6 +82,7 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     }
   }
 
+  /*
   Future<void> _seleccionarRefrigerios() async {
     final refrigerios = ref.read(refrigeriosProvider).value ?? [];
     final seleccionados = await showDialog<Set<String>>(
@@ -93,9 +103,17 @@ class _SalonFormState extends ConsumerState<SalonForm> {
       });
     }
   }
+  */ // eliminado método refrigerios
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_idEstablecimientoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debe seleccionar un establecimiento')),
+      );
+      return;
+    }
 
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
@@ -113,7 +131,8 @@ class _SalonFormState extends ConsumerState<SalonForm> {
           capacidadSillas,
           descripcion.isEmpty ? null : descripcion,
           _serviciosSeleccionados.toList(),
-          _refrigeriosSeleccionados.toList(),
+          // _refrigeriosSeleccionados.toList(), // eliminado
+          _idEstablecimientoSeleccionado!,
         );
       } else {
         await ref.read(salonesProvider.notifier).editarSalon(
@@ -123,7 +142,8 @@ class _SalonFormState extends ConsumerState<SalonForm> {
           capacidadSillas,
           descripcion.isEmpty ? null : descripcion,
           _serviciosSeleccionados.toList(),
-          _refrigeriosSeleccionados.toList(),
+          // _refrigeriosSeleccionados.toList(), // eliminado
+          _idEstablecimientoSeleccionado!,
         );
       }
 
@@ -138,66 +158,92 @@ class _SalonFormState extends ConsumerState<SalonForm> {
 
   @override
   Widget build(BuildContext context) {
+    final establecimientosAsync = ref.watch(establecimientosProvider);
+
     return AbsorbPointer(
       absorbing: _isLoading,
       child: AlertDialog(
         title: Text(widget.salon == null ? 'Agregar Salón' : 'Editar Salón'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _nombreController,
-                  decoration: const InputDecoration(labelText: 'Nombre del salón'),
-                  validator: (value) => (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _capMesasController,
-                  decoration: const InputDecoration(labelText: 'Capacidad de mesas'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    final num = int.tryParse(value ?? '');
-                    if (num == null || num < 0) return 'Ingrese un número válido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _capSillasController,
-                  decoration: const InputDecoration(labelText: 'Capacidad de sillas'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    final num = int.tryParse(value ?? '');
-                    if (num == null || num < 0) return 'Ingrese un número válido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descripcionController,
-                  decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _seleccionarServicios,
-                  icon: const Icon(Icons.miscellaneous_services),
-                  label: const Text('Seleccionar servicios incluidos'),
-                ),
-                Text('${_serviciosSeleccionados.length} seleccionados'),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _seleccionarRefrigerios,
-                  icon: const Icon(Icons.fastfood),
-                  label: const Text('Seleccionar refrigerios'),
-                ),
-                Text('${_refrigeriosSeleccionados.length} seleccionados'),
-              ],
+        content: establecimientosAsync.when(
+          data: (establecimientos) => SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Establecimiento'),
+                    items: establecimientos.map((e) => DropdownMenuItem(
+                      value: e.id,
+                      child: Text(e.nombre),
+                    )).toList(),
+                    value: _idEstablecimientoSeleccionado,
+                    onChanged: (value) => setState(() => _idEstablecimientoSeleccionado = value),
+                    validator: (value) => value == null ? 'Seleccione un establecimiento' : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: _nombreController,
+                    decoration: const InputDecoration(labelText: 'Nombre del salón'),
+                    validator: (value) => (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: _capMesasController,
+                    decoration: const InputDecoration(labelText: 'Capacidad de mesas'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      final num = int.tryParse(value ?? '');
+                      if (num == null || num < 0) return 'Ingrese un número válido';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: _capSillasController,
+                    decoration: const InputDecoration(labelText: 'Capacidad de sillas'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      final num = int.tryParse(value ?? '');
+                      if (num == null || num < 0) return 'Ingrese un número válido';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextFormField(
+                    controller: _descripcionController,
+                    decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 20),
+
+                  ElevatedButton.icon(
+                    onPressed: _seleccionarServicios,
+                    icon: const Icon(Icons.miscellaneous_services),
+                    label: const Text('Seleccionar servicios incluidos'),
+                  ),
+                  Text('${_serviciosSeleccionados.length} seleccionados'),
+
+                  /*
+                  const SizedBox(height: 12),
+
+                  ElevatedButton.icon(
+                    onPressed: _seleccionarRefrigerios,
+                    icon: const Icon(Icons.fastfood),
+                    label: const Text('Seleccionar refrigerios'),
+                  ),
+                  Text('${_refrigeriosSeleccionados.length} seleccionados'),
+                  */
+                ],
+              ),
             ),
           ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error al cargar establecimientos: $e')),
         ),
         actions: [
           TextButton(
@@ -220,6 +266,7 @@ class _SalonFormState extends ConsumerState<SalonForm> {
   }
 }
 
+// Diálogo genérico para selección con filtro
 class _SeleccionDialog<T> extends StatefulWidget {
   final String titulo;
   final List<T> elementos;

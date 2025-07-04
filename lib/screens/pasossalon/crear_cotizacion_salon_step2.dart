@@ -1,170 +1,90 @@
+// lib/screens/pasossalon/crear_cotizacion_salon_step2.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../models/salon.dart';
-import '../../../models/refrigerio.dart';
-import '../../../providers/cotizacion_salon_providers.dart';
-import 'paso3_resumen_salon.dart'; // Importa el paso 3 para navegar
+import '../../models/cotizacion_salon.dart';
+import '../../providers/cotizacion_salon_provider.dart';
+import 'crear_cotizacion_salon_step3.dart';
 
-class CrearCotizacionSalonStep2 extends ConsumerWidget {
-  final Salon salonSeleccionado;
+class Paso2CotizacionSalonPage extends ConsumerWidget {
+  final String idCotizacion;
+  final String idEstablecimiento;
+  final String idUsuario;
 
-  const CrearCotizacionSalonStep2({
-    super.key,
-    required this.salonSeleccionado,
-  });
+  const Paso2CotizacionSalonPage({
+    Key? key,
+    required this.idCotizacion,
+    required this.idEstablecimiento,
+    required this.idUsuario,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final refrigeriosSeleccionados = ref.watch(refrigeriosSeleccionadosProvider);
-    final notifier = ref.read(refrigeriosSeleccionadosProvider.notifier);
+    final listaSalones = ref.watch(cotizacionSalonProvider);
 
-    final refrigerios = salonSeleccionado.refrigerios;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    if (listaSalones.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('Cotización no iniciada')),
+      );
+    }
+
+    final cotizacion = listaSalones[0];
+    final notifier = ref.read(cotizacionSalonProvider.notifier);
+
+    // Servicios disponibles ejemplo estático
+    final serviciosDisponibles = [
+      {'id': 'serv1', 'nombre': 'Proyector', 'precio': 150.0},
+      {'id': 'serv2', 'nombre': 'Audio', 'precio': 200.0},
+      {'id': 'serv3', 'nombre': 'Catering', 'precio': 500.0},
+    ];
+
+    final serviciosSeleccionados = List<String>.from(cotizacion.serviciosSeleccionados);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Paso 2: Seleccionar Refrigerios'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 6,
-        shadowColor: primaryColor.withOpacity(0.5),
-      ),
+      appBar: AppBar(title: const Text('Paso 2: Seleccionar servicios')),
       body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(16),
+        child: ListView(
           children: [
-            Text(
-              'Refrigerios disponibles en el salón:',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '"${salonSeleccionado.nombre}"',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 20),
+            ...serviciosDisponibles.map((servicio) {
+              final idServicio = servicio['id'] as String;
+              final nombre = servicio['nombre'] as String;
 
-            refrigerios.isEmpty
-                ? Expanded(
-                    child: Center(
-                      child: Text(
-                        'Este salón no tiene refrigerios disponibles.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                : Expanded(
-                    child: ListView.separated(
-                      itemCount: refrigerios.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final refrigerio = refrigerios[index];
-                        final seleccionado = refrigeriosSeleccionados.contains(refrigerio);
+              final seleccionado = serviciosSeleccionados.contains(idServicio);
 
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            final actual = [...refrigeriosSeleccionados];
-                            if (actual.contains(refrigerio)) {
-                              actual.remove(refrigerio);
-                            } else {
-                              actual.add(refrigerio);
-                            }
-                            notifier.state = actual;
-                          },
-                          child: Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: seleccionado ? 6 : 2,
-                            shadowColor: seleccionado ? primaryColor.withOpacity(0.4) : Colors.black12,
-                            color: seleccionado ? primaryColor.withOpacity(0.12) : Colors.white,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    seleccionado ? Icons.check_circle : Icons.circle_outlined,
-                                    color: seleccionado ? primaryColor : Colors.grey[400],
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          refrigerio.nombre,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 17,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          refrigerio.descripcion,
-                                          style: TextStyle(color: Colors.grey[700]),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Precio: Bs ${refrigerio.precioUnitario.toStringAsFixed(2)}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            color: primaryColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+              return CheckboxListTile(
+                title: Text(nombre),
+                value: seleccionado,
+                onChanged: (bool? value) {
+                  final nuevosServicios = List<String>.from(serviciosSeleccionados);
+                  if (value == true && !nuevosServicios.contains(idServicio)) {
+                    nuevosServicios.add(idServicio);
+                  } else if (value == false) {
+                    nuevosServicios.remove(idServicio);
+                  }
+                  final salonActualizado = cotizacion.copyWith(
+                    serviciosSeleccionados: nuevosServicios,
+                  );
+                  notifier.actualizarSalon(0, salonActualizado);
+                },
+              );
+            }).toList(),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Paso3CotizacionSalonPage(
+                      idCotizacion: idCotizacion,
+                      idEstablecimiento: idEstablecimiento,
                     ),
                   ),
-
-            const SizedBox(height: 28),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Volver'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: refrigerios.isEmpty
-                      ? null
-                      : () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => CrearCotizacionSalonStep3(
-                                salonSeleccionado: salonSeleccionado,
-                              ),
-                            ),
-                          );
-                        },
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Siguiente'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                )
-              ],
-            )
+                );
+              },
+              icon: const Icon(Icons.navigate_next),
+              label: const Text('Siguiente'),
+            ),
           ],
         ),
       ),

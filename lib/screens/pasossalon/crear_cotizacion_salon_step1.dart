@@ -1,95 +1,271 @@
+// lib/screens/pasossalon/crear_cotizacion_salon_step1.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../models/salon.dart';
-import '../../../providers/salones_provider.dart';
-import 'crear_cotizacion_salon_step2.dart'; // Importa el paso 2
+import '../../models/cotizacion_salon.dart';
+import '../../providers/cotizacion_salon_provider.dart';
+import 'crear_cotizacion_salon_step2.dart';
 
-class CrearCotizacionSalonStep1 extends ConsumerWidget {
+class Paso1CotizacionSalonPage extends ConsumerStatefulWidget {
+  final String idCotizacion;
   final String idEstablecimiento;
+  final String idUsuario;
 
-  const CrearCotizacionSalonStep1({
-    super.key,
+  const Paso1CotizacionSalonPage({
+    Key? key,
+    required this.idCotizacion,
     required this.idEstablecimiento,
-  });
+    required this.idUsuario,
+  }) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final salonesAsync = ref.watch(salonesProvider); // No pasamos parámetro
-    final primaryColor = Theme.of(context).colorScheme.primary;
+  ConsumerState<Paso1CotizacionSalonPage> createState() => _Paso1CotizacionSalonPageState();
+}
 
+class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _ciController = TextEditingController();
+  final TextEditingController _tipoEventoController = TextEditingController();
+  final TextEditingController _participantesController = TextEditingController();
+  final TextEditingController _precioController = TextEditingController();
+
+  DateTime? _fechaEvento;
+  TimeOfDay? _horaInicio;
+  TimeOfDay? _horaFin;
+
+  String _tipoArmado = 'Auditorio';
+  final List<String> _tiposArmado = [
+    'Auditorio',
+    'Escuela',
+    'Mesas redondas',
+    'En U',
+    'A definir',
+  ];
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _ciController.dispose();
+    _tipoEventoController.dispose();
+    _participantesController.dispose();
+    _precioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _seleccionarFechaEvento(BuildContext context) async {
+    final ahora = DateTime.now();
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: ahora,
+      firstDate: ahora,
+      lastDate: DateTime(2100),
+    );
+    if (fecha != null) {
+      setState(() {
+        _fechaEvento = fecha;
+      });
+    }
+  }
+
+  Future<void> _seleccionarHoraInicio(BuildContext context) async {
+    final hora = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (hora != null) {
+      setState(() {
+        _horaInicio = hora;
+      });
+    }
+  }
+
+  Future<void> _seleccionarHoraFin(BuildContext context) async {
+    final hora = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (hora != null) {
+      setState(() {
+        _horaFin = hora;
+      });
+    }
+  }
+
+  void _guardarYContinuar() {
+    if (_formKey.currentState!.validate()) {
+      if (_fechaEvento == null || _horaInicio == null || _horaFin == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Por favor selecciona fecha y horarios')),
+        );
+        return;
+      }
+
+      final inicio = DateTime(
+        _fechaEvento!.year,
+        _fechaEvento!.month,
+        _fechaEvento!.day,
+        _horaInicio!.hour,
+        _horaInicio!.minute,
+      );
+      final fin = DateTime(
+        _fechaEvento!.year,
+        _fechaEvento!.month,
+        _fechaEvento!.day,
+        _horaFin!.hour,
+        _horaFin!.minute,
+      );
+
+      final participantes = int.tryParse(_participantesController.text) ?? 0;
+      final precioSalon = double.tryParse(_precioController.text) ?? 0.0;
+
+      final notifier = ref.read(cotizacionSalonProvider.notifier);
+      final listaSalones = ref.read(cotizacionSalonProvider);
+
+      if (listaSalones.isEmpty) {
+        notifier.agregarSalon(
+          ItemSalon(
+            idUsuario: widget.idUsuario,
+            idSalon: '',
+            nombreSalon: '',
+            capacidad: 0,
+            descripcion: '',
+            nombreCliente: _nombreController.text.trim(),
+            ciCliente: _ciController.text.trim(),
+            tipoEvento: _tipoEventoController.text.trim(),
+            fechaEvento: _fechaEvento!,
+            horaInicio: inicio,
+            horaFin: fin,
+            participantes: participantes,
+            tipoArmado: _tipoArmado,
+            precioSalonTotal: precioSalon,
+            serviciosSeleccionados: [],
+            itemsAdicionales: [],
+          ),
+        );
+      } else {
+        final salonActual = listaSalones[0];
+        final salonActualizado = salonActual.copyWith(
+          nombreCliente: _nombreController.text.trim(),
+          ciCliente: _ciController.text.trim(),
+          tipoEvento: _tipoEventoController.text.trim(),
+          fechaEvento: _fechaEvento!,
+          horaInicio: inicio,
+          horaFin: fin,
+          participantes: participantes,
+          tipoArmado: _tipoArmado,
+          precioSalonTotal: precioSalon,
+        );
+        notifier.actualizarSalon(0, salonActualizado);
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Paso2CotizacionSalonPage(
+            idCotizacion: widget.idCotizacion,
+            idEstablecimiento: widget.idEstablecimiento,
+            idUsuario: widget.idUsuario,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Paso 1: Seleccionar Salón'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: salonesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error al cargar salones: $e')),
-        data: (salones) {
-          final salonesDelEstablecimiento = salones
-              .where((s) => s.id.startsWith(idEstablecimiento)) // Aquí filtras los salones del establecimiento
-              .toList();
-
-          if (salonesDelEstablecimiento.isEmpty) {
-            return const Center(child: Text('No hay salones disponibles.'));
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: salonesDelEstablecimiento.length,
-            itemBuilder: (context, index) {
-              final salon = salonesDelEstablecimiento[index];
-              return Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(salon.nombre, style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text('Capacidad: ${salon.capacidadMesas} mesas, ${salon.capacidadSillas} sillas'),
-                      const SizedBox(height: 8),
-                      Text(salon.descripcion ?? '', style: const TextStyle(color: Colors.grey)),
-                      const Divider(height: 24),
-                      Text('Servicios incluidos:', style: Theme.of(context).textTheme.titleMedium),
-                      ...salon.servicios.map((s) => ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.check, color: Colors.green),
-                            title: Text(s.nombre),
-                          )),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          // Navegar al Paso 2, pasando el salón seleccionado
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => CrearCotizacionSalonStep2(
-                                salonSeleccionado: salon,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('Continuar'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      )
-                    ],
+      appBar: AppBar(title: const Text('Paso 1: Datos del evento')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre del cliente'),
+                validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+              ),
+              TextFormField(
+                controller: _ciController,
+                decoration: const InputDecoration(labelText: 'CI o NIT'),
+                validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+              ),
+              TextFormField(
+                controller: _tipoEventoController,
+                decoration: const InputDecoration(labelText: 'Tipo de evento'),
+                validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _seleccionarFechaEvento(context),
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(_fechaEvento == null
+                          ? 'Seleccionar fecha'
+                          : 'Fecha: ${_fechaEvento!.day}/${_fechaEvento!.month}/${_fechaEvento!.year}'),
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        },
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _seleccionarHoraInicio(context),
+                      icon: const Icon(Icons.access_time),
+                      label: Text(_horaInicio == null
+                          ? 'Hora de inicio'
+                          : 'Desde: ${_horaInicio!.format(context)}'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _seleccionarHoraFin(context),
+                      icon: const Icon(Icons.access_time),
+                      label: Text(_horaFin == null
+                          ? 'Hora de fin'
+                          : 'Hasta: ${_horaFin!.format(context)}'),
+                    ),
+                  ),
+                ],
+              ),
+              TextFormField(
+                controller: _participantesController,
+                decoration: const InputDecoration(labelText: 'Cantidad de participantes'),
+                keyboardType: TextInputType.number,
+                validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _tipoArmado,
+                decoration: const InputDecoration(labelText: 'Tipo de armado'),
+                items: _tiposArmado
+                    .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _tipoArmado = value;
+                    });
+                  }
+                },
+              ),
+              TextFormField(
+                controller: _precioController,
+                decoration: const InputDecoration(labelText: 'Precio total del salón (Bs)'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _guardarYContinuar,
+                icon: const Icon(Icons.navigate_next),
+                label: const Text('Siguiente'),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

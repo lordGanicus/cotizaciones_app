@@ -1,8 +1,6 @@
-// lib/screens/hotel_selection.dart
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/hotel_card.dart';
+
 import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
 import 'pasoscomida/crear_cotizacion_comida_step.dart';
@@ -11,9 +9,7 @@ import 'refrigerios/refrigerios_screen.dart';
 import 'salon/salones_screen.dart';
 import 'habitaciones/habitaciones_screen.dart';
 import 'gestion_general_screen.dart';
-
-import 'pasossalon/crear_cotizacion_salon_step1.dart'; // <--- Import agregado
-
+import 'pasossalon/crear_cotizacion_salon_step1.dart';
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -139,8 +135,10 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CrearCotizacionSalonStep1(
+          builder: (_) => Paso1CotizacionSalonPage(
+            idCotizacion: idCotizacion,
             idEstablecimiento: hotelUnico!['id'],
+            idUsuario: user.id, 
           ),
         ),
       );
@@ -284,10 +282,10 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                                 final c = cotizaciones[index];
                                 return ListTile(
                                   title: Text('Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
-                                  subtitle: Text('Estado: ${c['estado']}'),
+                                  subtitle: Text('Estado: ${c['estado'] ?? 'N/D'}'),
                                   trailing: const Icon(Icons.chevron_right),
                                   onTap: () {
-                                    // Detalle de cotización futuro
+                                    // Aquí podrías navegar a un resumen futuro
                                   },
                                 );
                               },
@@ -298,7 +296,29 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                     ),
                   ),
                 ],
-                // Resto del código sin cambios...
+                if (hotelesMultiples.isNotEmpty) ...[
+                  const Text(
+                    'Selecciona un hotel para continuar:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  ...hotelesMultiples.map((hotel) {
+                    return ListTile(
+                      leading: hotel['logotipo'] != null
+                          ? Image.network(hotel['logotipo'], width: 50, height: 50, errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported))
+                          : const Icon(Icons.hotel),
+                      title: Text(hotel['nombre']),
+                      onTap: () {
+                        // Aquí podrías implementar selección múltiple si deseas
+                      },
+                    );
+                  }),
+                ],
+                if (hotelUnico == null && hotelesMultiples.isEmpty && !isLoading) ...[
+                  const Center(
+                    child: Text('No se encontraron hoteles asignados a este usuario.'),
+                  ),
+                ],
               ],
             ),
           ),

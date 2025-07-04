@@ -1,3 +1,5 @@
+// lib/screens/gestion_general_screen.dart
+
 import 'package:flutter/material.dart';
 import 'servicios/servicios_screen.dart';
 import 'refrigerios/refrigerios_screen.dart';
@@ -13,22 +15,22 @@ class GestionGeneralScreen extends StatelessWidget {
       {
         'icon': Icons.miscellaneous_services,
         'label': 'Servicios Incluidos',
-        'screen': const ServiciosScreen(),
+        'screen': const ServiciosScreen(), // sin idEstablecimiento
       },
       {
         'icon': Icons.fastfood,
         'label': 'Refrigerios',
-        'screen': const RefrigeriosScreen(),
+        'screen': const RefrigeriosScreen(), // sin idEstablecimiento
       },
       {
         'icon': Icons.meeting_room,
         'label': 'Salones',
-        'screen': const SalonesScreen(),
+        'screen': const SalonesScreen(), // sin parámetro
       },
       {
         'icon': Icons.bed,
         'label': 'Habitaciones',
-        'screen': const HabitacionesScreen(),
+        'screen': const HabitacionesScreen(), // sin idEstablecimiento
       },
     ];
 

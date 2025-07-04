@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/salon.dart';
 import '../models/servicio_incluido.dart';
-import '../models/refrigerio.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -30,16 +29,6 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
                 descripcion,
                 created_at
               )
-            ),
-            salon_refrigerios (
-              refrigerio_id,
-              refrigerios (
-                id,
-                nombre_refrigerio,
-                descripcion,
-                precio_unitario,
-                created_at
-              )
             )
           ''')
           .order('created_at', ascending: false);
@@ -51,13 +40,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
             .map((s) => ServicioIncluido.fromMap(s))
             .toList();
 
-        final refrigerios = (row['salon_refrigerios'] as List)
-            .map((rel) => rel['refrigerios'])
-            .where((r) => r != null)
-            .map((r) => Refrigerio.fromMap(r))
-            .toList();
-
-        return Salon.fromMap(row, servicios, refrigerios);
+        return Salon.fromMap(row, servicios);
       }).toList();
 
       state = AsyncData(lista);
@@ -74,7 +57,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     int capacidadSillas,
     String? descripcion,
     List<String> serviciosIds,
-    List<String> refrigeriosIds,
+    String idEstablecimiento,
   ) async {
     try {
       final response = await supabase.from('salones').insert({
@@ -82,6 +65,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
         'capacidad_mesas': capacidadMesas,
         'capacidad_sillas': capacidadSillas,
         'descripcion': descripcion,
+        'id_establecimiento': idEstablecimiento,
       }).select().single();
 
       final salonId = response['id'] as String;
@@ -90,13 +74,6 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
         await supabase.from('salon_servicios_incluidos').insert({
           'salon_id': salonId,
           'servicio_id': sid,
-        });
-      }
-
-      for (final rid in refrigeriosIds) {
-        await supabase.from('salon_refrigerios').insert({
-          'salon_id': salonId,
-          'refrigerio_id': rid,
         });
       }
 
@@ -114,7 +91,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     int capacidadSillas,
     String? descripcion,
     List<String> serviciosIds,
-    List<String> refrigeriosIds,
+    String idEstablecimiento,
   ) async {
     try {
       await supabase.from('salones').update({
@@ -122,6 +99,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
         'capacidad_mesas': capacidadMesas,
         'capacidad_sillas': capacidadSillas,
         'descripcion': descripcion,
+        'id_establecimiento': idEstablecimiento,
       }).eq('id', id);
 
       await supabase.from('salon_servicios_incluidos').delete().eq('salon_id', id);
@@ -129,14 +107,6 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
         await supabase.from('salon_servicios_incluidos').insert({
           'salon_id': id,
           'servicio_id': sid,
-        });
-      }
-
-      await supabase.from('salon_refrigerios').delete().eq('salon_id', id);
-      for (final rid in refrigeriosIds) {
-        await supabase.from('salon_refrigerios').insert({
-          'salon_id': id,
-          'refrigerio_id': rid,
         });
       }
 
@@ -158,3 +128,8 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     }
   }
 }
+
+final salonesPorEstablecimientoProvider = FutureProvider.family<List<Salon>, String>((ref, idEstablecimiento) async {
+  final todos = await ref.read(salonesProvider.notifier).cargarSalones();
+  return todos.where((s) => s.idEstablecimiento == idEstablecimiento).toList();
+});
