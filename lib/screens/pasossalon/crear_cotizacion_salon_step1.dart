@@ -1,5 +1,3 @@
-// lib/screens/pasossalon/crear_cotizacion_salon_step1.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/cotizacion_salon.dart';
@@ -19,7 +17,8 @@ class Paso1CotizacionSalonPage extends ConsumerStatefulWidget {
   }) : super(key: key);
 
   @override
-  ConsumerState<Paso1CotizacionSalonPage> createState() => _Paso1CotizacionSalonPageState();
+  ConsumerState<Paso1CotizacionSalonPage> createState() =>
+      _Paso1CotizacionSalonPageState();
 }
 
 class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonPage> {
@@ -169,27 +168,46 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
 
   @override
   Widget build(BuildContext context) {
+    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Paso 1: Datos del evento')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text('Datos del cliente', style: titleStyle),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre del cliente'),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del cliente',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _ciController,
-                decoration: const InputDecoration(labelText: 'CI o NIT'),
+                decoration: const InputDecoration(
+                  labelText: 'CI o NIT',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
+
+              const SizedBox(height: 24),
+              Text('Detalles del evento', style: titleStyle),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _tipoEventoController,
-                decoration: const InputDecoration(labelText: 'Tipo de evento'),
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de evento',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 12),
@@ -201,11 +219,12 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                       icon: const Icon(Icons.calendar_today),
                       label: Text(_fechaEvento == null
                           ? 'Seleccionar fecha'
-                          : 'Fecha: ${_fechaEvento!.day}/${_fechaEvento!.month}/${_fechaEvento!.year}'),
+                          : '${_fechaEvento!.day}/${_fechaEvento!.month}/${_fechaEvento!.year}'),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -213,7 +232,7 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                       onPressed: () => _seleccionarHoraInicio(context),
                       icon: const Icon(Icons.access_time),
                       label: Text(_horaInicio == null
-                          ? 'Hora de inicio'
+                          ? 'Hora inicio'
                           : 'Desde: ${_horaInicio!.format(context)}'),
                     ),
                   ),
@@ -223,22 +242,29 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                       onPressed: () => _seleccionarHoraFin(context),
                       icon: const Icon(Icons.access_time),
                       label: Text(_horaFin == null
-                          ? 'Hora de fin'
+                          ? 'Hora fin'
                           : 'Hasta: ${_horaFin!.format(context)}'),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _participantesController,
-                decoration: const InputDecoration(labelText: 'Cantidad de participantes'),
+                decoration: const InputDecoration(
+                  labelText: 'Cantidad de participantes',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _tipoArmado,
-                decoration: const InputDecoration(labelText: 'Tipo de armado'),
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de armado',
+                  border: OutlineInputBorder(),
+                ),
                 items: _tiposArmado
                     .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
                     .toList(),
@@ -250,18 +276,30 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                   }
                 },
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _precioController,
-                decoration: const InputDecoration(labelText: 'Precio total del salón (Bs)'),
+                decoration: const InputDecoration(
+                  labelText: 'Precio total del salón (Bs)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _guardarYContinuar,
-                icon: const Icon(Icons.navigate_next),
-                label: const Text('Siguiente'),
-                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              const SizedBox(height: 30),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: _guardarYContinuar,
+                  icon: const Icon(Icons.navigate_next),
+                  label: const Text('Siguiente'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                ),
               ),
             ],
           ),

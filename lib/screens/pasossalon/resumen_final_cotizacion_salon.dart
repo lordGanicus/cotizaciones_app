@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 
 class ResumenFinalCotizacionSalonPage extends StatefulWidget {
   final String idCotizacion;
@@ -15,7 +18,8 @@ class ResumenFinalCotizacionSalonPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<ResumenFinalCotizacionSalonPage> createState() => _ResumenFinalCotizacionSalonPageState();
+  State<ResumenFinalCotizacionSalonPage> createState() =>
+      _ResumenFinalCotizacionSalonPageState();
 }
 
 class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacionSalonPage> {
@@ -117,6 +121,93 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
     }
   }
 
+  Future<void> _exportarPdf() async {
+    final pdf = pw.Document();
+    final fechaActual = DateFormat('dd/MM/yyyy').format(DateTime.now());
+
+    pw.ImageProvider? logoImage;
+    if (logoHotel != null && logoHotel!.isNotEmpty) {
+      try {
+        logoImage = await networkImage(logoHotel!);
+      } catch (_) {}
+    }
+
+    final itemsTable = items.map((item) {
+      final desc = item['descripcion'] ?? 'Sin descripción';
+      final cantidad = item['cantidad'] ?? 0;
+      final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+
+      double totalItem = 0;
+      if (item.containsKey('total') && item['total'] != null) {
+        final val = item['total'];
+        if (val is num) {
+          totalItem = val.toDouble();
+        }
+      }
+      if (totalItem == 0 && cantidad is int) {
+        totalItem = precioUnitario * cantidad;
+      }
+
+      return [
+        desc.toString(),
+        cantidad.toString(),
+        'Bs ${precioUnitario.toStringAsFixed(2)}',
+        'Bs ${totalItem.toStringAsFixed(2)}',
+      ];
+    }).toList();
+
+    pdf.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          if (logoImage != null)
+            pw.Center(child: pw.Image(logoImage, height: 100)),
+          if (nombreHotel != null)
+            pw.Center(
+              child: pw.Text(nombreHotel!,
+                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            ),
+          pw.SizedBox(height: 12),
+          pw.Text('La Paz, $fechaActual'),
+          pw.Text('COT N°: ${widget.idCotizacion}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 16),
+          pw.Text('Señores:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text(widget.nombreCliente),
+          pw.Text('CI: ${widget.ciCliente}'),
+          pw.SizedBox(height: 24),
+          pw.Text('DETALLES DEL EVENTO', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
+          pw.Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
+          pw.SizedBox(height: 16),
+          pw.Text('🧾 Detalle de la propuesta:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Table.fromTextArray(
+            headers: ['Descripción', 'Cantidad', 'P. Unitario', 'Total'],
+            data: itemsTable,
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: pw.BoxDecoration(color: PdfColors.grey700),
+            cellAlignment: pw.Alignment.centerLeft,
+            cellPadding: const pw.EdgeInsets.all(6),
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+          ),
+          pw.SizedBox(height: 16),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(
+              'Total final: Bs ${totalFinal.toStringAsFixed(2)}',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+          )
+        ],
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'cotizacion_salon_${widget.idCotizacion}.pdf',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
@@ -153,7 +244,6 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                           ),
                         ),
                       const SizedBox(height: 24),
-
                       Text('La Paz, ${DateFormat('dd/MM/yyyy').format(DateTime.now())}'),
                       const SizedBox(height: 4),
                       Text('COT N°: ${widget.idCotizacion}',
@@ -163,18 +253,14 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                       Text(widget.nombreCliente),
                       Text('CI: ${widget.ciCliente}'),
                       const SizedBox(height: 24),
-
-                      Text('DETALLES DEL EVENTO',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text('DETALLES DEL EVENTO', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
                       Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
                       Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
                       const SizedBox(height: 16),
-
                       Text('🧾 Detalle de la propuesta:',
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-
                       Table(
                         border: TableBorder.all(color: Colors.grey.shade300),
                         columnWidths: const {
@@ -248,7 +334,6 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                           }),
                         ],
                       ),
-
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -263,39 +348,12 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                                   ?.copyWith(color: primaryColor)),
                         ],
                       ),
-
                       const SizedBox(height: 30),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Función exportar PDF en desarrollo'),
-                            ),
-                          );
-                        },
+                        onPressed: _exportarPdf,
                         icon: const Icon(Icons.picture_as_pdf),
                         label: const Text('Descargar PDF'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Función enviar correo en desarrollo'),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.send),
-                        label: const Text('Enviar por correo'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -308,3 +366,4 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
     );
   }
 }
+

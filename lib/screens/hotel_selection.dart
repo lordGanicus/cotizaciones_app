@@ -10,6 +10,7 @@ import 'salon/salones_screen.dart';
 import 'habitaciones/habitaciones_screen.dart';
 import 'gestion_general_screen.dart';
 import 'pasossalon/crear_cotizacion_salon_step1.dart';
+import 'pasoEstablecimiento/pantalla_establecimientos.dart'; 
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -116,7 +117,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CrearCotizacionHabitacionStep1(idCotizacion: idCotizacion),
+          builder: (_) =>
+              CrearCotizacionHabitacionStep1(idCotizacion: idCotizacion),
         ),
       );
     }
@@ -138,7 +140,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
           builder: (_) => Paso1CotizacionSalonPage(
             idCotizacion: idCotizacion,
             idEstablecimiento: hotelUnico!['id'],
-            idUsuario: user.id, 
+            idUsuario: user.id,
           ),
         ),
       );
@@ -155,7 +157,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     if (context.mounted) {
       final idCotizacion = nuevaCotizacion['id'];
-
       final nombre = datosUsuario?['nombre'] ?? 'Sin nombre';
       final ci = datosUsuario?['ci'] ?? 'Sin CI';
 
@@ -221,28 +222,24 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           Text('🪪 CI: ${datosUsuario!['ci']}'),
                         ],
                         const SizedBox(height: 24),
-
                         ElevatedButton.icon(
                           onPressed: _crearNuevaCotizacionSalon,
                           icon: const Icon(Icons.event),
                           label: const Text('Crear cotización de salón'),
                         ),
                         const SizedBox(height: 12),
-
                         ElevatedButton.icon(
                           onPressed: _crearNuevaCotizacionHabitacion,
                           icon: const Icon(Icons.bed),
                           label: const Text('Crear cotización de habitación'),
                         ),
                         const SizedBox(height: 12),
-
                         ElevatedButton.icon(
                           onPressed: _crearNuevaCotizacionComida,
                           icon: const Icon(Icons.restaurant_menu),
                           label: const Text('Crear cotización de comida'),
                         ),
                         const SizedBox(height: 24),
-
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -253,10 +250,10 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                             );
                           },
                           icon: const Icon(Icons.manage_accounts),
-                          label: const Text('Gestionar Servicios, Refrigerios, Salones y Habitaciones'),
+                          label: const Text(
+                              'Gestionar Servicios, Refrigerios, Salones y Habitaciones'),
                         ),
                         const SizedBox(height: 24),
-
                         const Text(
                           'Tus cotizaciones anteriores:',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -266,12 +263,15 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           future: _cargarCotizaciones(),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                  child: CircularProgressIndicator());
                             }
 
                             final cotizaciones = snapshot.data!;
                             if (cotizaciones.isEmpty) {
-                              return const Center(child: Text('No hay cotizaciones registradas.'));
+                              return const Center(
+                                  child:
+                                      Text('No hay cotizaciones registradas.'));
                             }
 
                             return ListView.builder(
@@ -281,11 +281,13 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                               itemBuilder: (context, index) {
                                 final c = cotizaciones[index];
                                 return ListTile(
-                                  title: Text('Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
-                                  subtitle: Text('Estado: ${c['estado'] ?? 'N/D'}'),
+                                  title: Text(
+                                      'Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
+                                  subtitle: Text(
+                                      'Estado: ${c['estado'] ?? 'N/D'}'),
                                   trailing: const Icon(Icons.chevron_right),
                                   onTap: () {
-                                    // Aquí podrías navegar a un resumen futuro
+                                    // Navegar a resumen futuro
                                   },
                                 );
                               },
@@ -305,20 +307,40 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ...hotelesMultiples.map((hotel) {
                     return ListTile(
                       leading: hotel['logotipo'] != null
-                          ? Image.network(hotel['logotipo'], width: 50, height: 50, errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported))
+                          ? Image.network(hotel['logotipo'],
+                              width: 50,
+                              height: 50,
+                              errorBuilder: (_, __, ___) =>
+                                  const Icon(Icons.image_not_supported))
                           : const Icon(Icons.hotel),
                       title: Text(hotel['nombre']),
                       onTap: () {
-                        // Aquí podrías implementar selección múltiple si deseas
+                        // Aquí podrías manejar navegación
                       },
                     );
                   }),
                 ],
-                if (hotelUnico == null && hotelesMultiples.isEmpty && !isLoading) ...[
+                if (hotelUnico == null &&
+                    hotelesMultiples.isEmpty &&
+                    !isLoading) ...[
                   const Center(
-                    child: Text('No se encontraron hoteles asignados a este usuario.'),
+                    child: Text(
+                        'No se encontraron hoteles asignados a este usuario.'),
                   ),
                 ],
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PantallaEstablecimientos(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.business),
+                  label: const Text('Gestionar Establecimientos'),
+                ),
               ],
             ),
           ),
