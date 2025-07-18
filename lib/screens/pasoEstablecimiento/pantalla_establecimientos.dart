@@ -22,9 +22,9 @@ class PantallaEstablecimientos extends ConsumerWidget {
           itemBuilder: (context, index) {
             final est = lista[index];
             return ListTile(
-              leading: est.logotipoUrl != null
+              leading: est.logotipo != null && est.logotipo!.isNotEmpty
                   ? Image.network(
-                      est.logotipoUrl!,
+                      est.logotipo!,
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
@@ -33,7 +33,9 @@ class PantallaEstablecimientos extends ConsumerWidget {
                     )
                   : const Icon(Icons.business, size: 50),
               title: Text(est.nombre),
-              subtitle: Text(est.membreteUrl ?? 'Sin membrete'),
+              subtitle: Text(est.membrete != null && est.membrete!.isNotEmpty
+                  ? est.membrete!
+                  : 'Sin membrete'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -111,9 +113,7 @@ class PantallaEstablecimientos extends ConsumerWidget {
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text('Error al eliminar: $e')),
+                                SnackBar(content: Text('Error al eliminar: $e')),
                               );
                             }
                           } finally {

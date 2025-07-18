@@ -3,11 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 import '../../models/Msubestablecimiento.dart';
 import '../../providers/pestablecimiento.dart';
+import '../../utils/cloudinary_upload.dart';
 
 class FormSubestablecimiento extends ConsumerStatefulWidget {
   final bool esEditar;
@@ -31,14 +30,17 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
   late TextEditingController _nombreController;
   late TextEditingController _descripcionController;
 
-  // Ya no usamos controladores para URLs de imagen, porque se subirán dinámicamente
   String? _logotipoUrl;
   String? _membreteUrl;
+
+  String? _logotipoPublicId;
+  String? _membretePublicId;
 
   bool _subiendoImagenLogotipo = false;
   bool _subiendoImagenMembrete = false;
 
   final ImagePicker _picker = ImagePicker();
+  final CloudinaryService _cloudinaryService = CloudinaryService();
 
   @override
   void initState() {
@@ -47,6 +49,9 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
     _descripcionController = TextEditingController(text: widget.subestablecimiento?.descripcion ?? '');
     _logotipoUrl = widget.subestablecimiento?.logotipo;
     _membreteUrl = widget.subestablecimiento?.membrete;
+
+    _logotipoPublicId = widget.subestablecimiento?.logotipoPublicId;
+    _membretePublicId = widget.subestablecimiento?.membretePublicId;
   }
 
   @override
@@ -54,26 +59,6 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
     _nombreController.dispose();
     _descripcionController.dispose();
     super.dispose();
-  }
-
-  Future<String?> _subirImagen(File imagen) async {
-    const cloudName = 'ds9subkxg';  // Tu cloud name
-    const uploadPreset = 'flutter_unsigned_upload';  // Tu upload preset
-
-    final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
-
-    final request = http.MultipartRequest('POST', uri);
-    request.fields['upload_preset'] = uploadPreset;
-    request.files.add(await http.MultipartFile.fromPath('file', imagen.path));
-
-    final response = await request.send();
-    if (response.statusCode == 200) {
-      final respStr = await response.stream.bytesToString();
-      final jsonResp = json.decode(respStr);
-      return jsonResp['secure_url'] as String?;
-    } else {
-      return null;
-    }
   }
 
   Future<void> _seleccionarYSubirImagen({required bool esLogotipo}) async {
@@ -88,20 +73,27 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
       }
     });
 
-    final url = await _subirImagen(File(pickedFile.path));
+    final resultado = await _cloudinaryService.subirImagen(pickedFile.path);
 
-    if (url != null) {
+    if (resultado != null && resultado['secure_url'] != null && resultado['public_id'] != null) {
+      final url = resultado['secure_url']!;
+      final publicId = resultado['public_id']!;
+
       setState(() {
         if (esLogotipo) {
           _logotipoUrl = url;
+          _logotipoPublicId = publicId;
         } else {
           _membreteUrl = url;
+          _membretePublicId = publicId;
         }
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al subir la imagen')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al subir la imagen')),
+        );
+      }
     }
 
     setState(() {
@@ -113,7 +105,7 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
     });
   }
 
-  void _guardar() async {
+  Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
     final nombre = _nombreController.text.trim();
@@ -122,26 +114,31 @@ class _FormSubestablecimientoState extends ConsumerState<FormSubestablecimiento>
     try {
       if (widget.esEditar && widget.subestablecimiento != null) {
         await ref.read(subestablecimientosProvider(widget.idEstablecimiento).notifier).editarSubestablecimiento(
-              id: widget.subestablecimiento!.id,
-              nombre: nombre,
-              descripcion: descripcion,
-              logotipo: _logotipoUrl,
-              membrete: _membreteUrl,
-            );
+          id: widget.subestablecimiento!.id,
+          nombre: nombre,
+          descripcion: descripcion,
+          logotipo: _logotipoUrl,
+          logotipoPublicId: _logotipoPublicId,
+          membrete: _membreteUrl,
+          membretePublicId: _membretePublicId,
+        );
       } else {
         await ref.read(subestablecimientosProvider(widget.idEstablecimiento).notifier).agregarSubestablecimiento(
-              nombre: nombre,
-              descripcion: descripcion,
-              logotipo: _logotipoUrl,
-              membrete: _membreteUrl,
-            );
+          nombre: nombre,
+          descripcion: descripcion,
+          logotipo: _logotipoUrl,
+          logotipoPublicId: _logotipoPublicId,
+          membrete: _membreteUrl,
+          membretePublicId: _membretePublicId,
+        );
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      // Mostrar error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e')),
+        );
+      }
     }
   }
 

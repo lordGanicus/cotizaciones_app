@@ -1,10 +1,13 @@
+// lib/models/Msubestablecimiento.dart
 class Subestablecimiento {
   final String id;
   final String idEstablecimiento;
   final String nombre;
   final String? descripcion;
-  final String? logotipo;    // agregar
-  final String? membrete;    // agregar
+  final String? logotipo;
+  final String? logotipoPublicId;
+  final String? membrete;
+  final String? membretePublicId;
 
   Subestablecimiento({
     required this.id,
@@ -12,7 +15,9 @@ class Subestablecimiento {
     required this.nombre,
     this.descripcion,
     this.logotipo,
+    this.logotipoPublicId,
     this.membrete,
+    this.membretePublicId,
   });
 
   factory Subestablecimiento.fromMap(Map<String, dynamic> map) {
@@ -21,8 +26,10 @@ class Subestablecimiento {
       idEstablecimiento: map['id_establecimiento'] as String,
       nombre: map['nombre'] as String,
       descripcion: map['descripcion'] as String?,
-      logotipo: map['logotipo'] as String?,   // agregar
-      membrete: map['membrete'] as String?,   // agregar
+      logotipo: map['logotipo'] as String?,
+      logotipoPublicId: map['logotipo_public_id'] as String?,
+      membrete: map['membrete'] as String?,
+      membretePublicId: map['membrete_public_id'] as String?,
     );
   }
 
@@ -33,7 +40,9 @@ class Subestablecimiento {
       'nombre': nombre,
       'descripcion': descripcion,
       'logotipo': logotipo,
+      'logotipo_public_id': logotipoPublicId,
       'membrete': membrete,
+      'membrete_public_id': membretePublicId,
     };
   }
 }

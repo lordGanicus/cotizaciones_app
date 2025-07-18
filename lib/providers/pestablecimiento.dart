@@ -3,10 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/Mestablecimiento.dart';
 import '../models/Msubestablecimiento.dart';
+import '../utils/cloudinary_upload.dart';
 
 final supabase = Supabase.instance.client;
 
-/// Provider para la lista de establecimientos
 final establecimientosProvider =
     AsyncNotifierProvider<EstablecimientosNotifier, List<Establecimiento>>(
   EstablecimientosNotifier.new,
@@ -41,13 +41,17 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
 
   Future<void> agregarEstablecimiento({
     required String nombre,
-    String? logotipoUrl,
-    String? membreteUrl,
+    String? logotipo,
+    String? logotipoPublicId,
+    String? membrete,
+    String? membretePublicId,
   }) async {
     final response = await supabase.from('establecimientos').insert({
       'nombre': nombre,
-      'logotipo': logotipoUrl,
-      'membrete': membreteUrl,
+      'logotipo': logotipo,
+      'logotipo_public_id': logotipoPublicId,
+      'membrete': membrete,
+      'membrete_public_id': membretePublicId,
     }).select().single();
 
     final nuevo = Establecimiento.fromMap(response);
@@ -58,13 +62,17 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
   Future<void> editarEstablecimiento({
     required String id,
     required String nombre,
-    String? logotipoUrl,
-    String? membreteUrl,
+    String? logotipo,
+    String? logotipoPublicId,
+    String? membrete,
+    String? membretePublicId,
   }) async {
     await supabase.from('establecimientos').update({
       'nombre': nombre,
-      'logotipo': logotipoUrl,
-      'membrete': membreteUrl,
+      'logotipo': logotipo,
+      'logotipo_public_id': logotipoPublicId,
+      'membrete': membrete,
+      'membrete_public_id': membretePublicId,
     }).eq('id', id);
 
     final listaActual = state.value ?? [];
@@ -73,8 +81,10 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
         return Establecimiento(
           id: id,
           nombre: nombre,
-          logotipoUrl: logotipoUrl,
-          membreteUrl: membreteUrl,
+          logotipo: logotipo,
+          logotipoPublicId: logotipoPublicId,
+          membrete: membrete,
+          membretePublicId: membretePublicId,
         );
       }
       return e;
@@ -84,7 +94,18 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
   }
 
   Future<void> eliminarEstablecimiento(String id) async {
+    final establecimiento = state.value?.firstWhere((e) => e.id == id);
+    if (establecimiento != null) {
+      if (establecimiento.logotipoPublicId != null) {
+        await CloudinaryService().eliminarImagen(establecimiento.logotipoPublicId!);
+      }
+      if (establecimiento.membretePublicId != null) {
+        await CloudinaryService().eliminarImagen(establecimiento.membretePublicId!);
+      }
+    }
+
     await supabase.from('establecimientos').delete().eq('id', id);
+
     final listaActual = state.value ?? [];
     state = AsyncValue.data(listaActual.where((e) => e.id != id).toList());
   }
@@ -94,7 +115,6 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
   }
 }
 
-/// Provider para subestablecimientos, recibe el idEstablecimiento como parámetro
 final subestablecimientosProvider = AsyncNotifierProviderFamily<
     SubestablecimientosNotifier, List<Subestablecimiento>, String>(
   SubestablecimientosNotifier.new,
@@ -136,14 +156,18 @@ class SubestablecimientosNotifier
     required String nombre,
     String? descripcion,
     String? logotipo,
+    String? logotipoPublicId,
     String? membrete,
+    String? membretePublicId,
   }) async {
     final response = await supabase.from('subestablecimientos').insert({
       'id_establecimiento': idEstablecimiento,
       'nombre': nombre,
       'descripcion': descripcion,
       'logotipo': logotipo,
+      'logotipo_public_id': logotipoPublicId,
       'membrete': membrete,
+      'membrete_public_id': membretePublicId,
     }).select().single();
 
     final nuevo = Subestablecimiento.fromMap(response);
@@ -156,13 +180,17 @@ class SubestablecimientosNotifier
     required String nombre,
     String? descripcion,
     String? logotipo,
+    String? logotipoPublicId,
     String? membrete,
+    String? membretePublicId,
   }) async {
     await supabase.from('subestablecimientos').update({
       'nombre': nombre,
       'descripcion': descripcion,
       'logotipo': logotipo,
+      'logotipo_public_id': logotipoPublicId,
       'membrete': membrete,
+      'membrete_public_id': membretePublicId,
     }).eq('id', id);
 
     final listaActual = state.value ?? [];
@@ -174,7 +202,9 @@ class SubestablecimientosNotifier
           nombre: nombre,
           descripcion: descripcion,
           logotipo: logotipo,
+          logotipoPublicId: logotipoPublicId,
           membrete: membrete,
+          membretePublicId: membretePublicId,
         );
       }
       return s;
@@ -184,7 +214,18 @@ class SubestablecimientosNotifier
   }
 
   Future<void> eliminarSubestablecimiento(String id) async {
+    final sub = state.value?.firstWhere((s) => s.id == id);
+    if (sub != null) {
+      if (sub.logotipoPublicId != null) {
+        await CloudinaryService().eliminarImagen(sub.logotipoPublicId!);
+      }
+      if (sub.membretePublicId != null) {
+        await CloudinaryService().eliminarImagen(sub.membretePublicId!);
+      }
+    }
+
     await supabase.from('subestablecimientos').delete().eq('id', id);
+
     final listaActual = state.value ?? [];
     state = AsyncValue.data(listaActual.where((s) => s.id != id).toList());
   }

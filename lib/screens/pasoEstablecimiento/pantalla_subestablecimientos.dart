@@ -31,7 +31,7 @@ class PantallaSubestablecimientos extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final sub = lista[index];
                   return ListTile(
-                    leading: sub.logotipo != null
+                    leading: sub.logotipo != null && sub.logotipo!.isNotEmpty
                         ? Image.network(
                             sub.logotipo!,
                             width: 50,
@@ -42,7 +42,9 @@ class PantallaSubestablecimientos extends ConsumerWidget {
                           )
                         : const Icon(Icons.apartment, size: 50),
                     title: Text(sub.nombre),
-                    subtitle: Text(sub.membrete ?? 'Sin membrete'),
+                    subtitle: Text(sub.membrete != null && sub.membrete!.isNotEmpty
+                        ? sub.membrete!
+                        : 'Sin membrete'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -108,9 +110,7 @@ class PantallaSubestablecimientos extends ConsumerWidget {
                           setState(() => _isDeleting = true);
                           try {
                             await ref
-                                .read(
-                                    subestablecimientosProvider(idEstablecimiento)
-                                        .notifier)
+                                .read(subestablecimientosProvider(idEstablecimiento).notifier)
                                 .eliminarSubestablecimiento(idSubestablecimiento);
                             if (context.mounted) Navigator.pop(context);
                           } catch (e) {

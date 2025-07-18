@@ -3,17 +3,17 @@
 class Establecimiento {
   final String id;
   final String nombre;
-  final String? logotipoUrl;
-  final String? logotipoPublicId;
-  final String? membreteUrl;
-  final String? membretePublicId;
+  final String? logotipo;        // URL o path guardado en BD
+  final String? logotipoPublicId; // Para manejar Cloudinary (no en BD)
+  final String? membrete;
+  final String? membretePublicId; // Para manejar Cloudinary (no en BD)
 
   Establecimiento({
     required this.id,
     required this.nombre,
-    this.logotipoUrl,
+    this.logotipo,
     this.logotipoPublicId,
-    this.membreteUrl,
+    this.membrete,
     this.membretePublicId,
   });
 
@@ -21,9 +21,9 @@ class Establecimiento {
     return Establecimiento(
       id: map['id'] as String,
       nombre: map['nombre'] as String,
-      logotipoUrl: map['logotipo_url'] as String?,
+      logotipo: map['logotipo'] as String?,
       logotipoPublicId: map['logotipo_public_id'] as String?,
-      membreteUrl: map['membrete_url'] as String?,
+      membrete: map['membrete'] as String?,
       membretePublicId: map['membrete_public_id'] as String?,
     );
   }
@@ -32,9 +32,9 @@ class Establecimiento {
     return {
       'id': id,
       'nombre': nombre,
-      'logotipo_url': logotipoUrl,
+      'logotipo': logotipo,
       'logotipo_public_id': logotipoPublicId,
-      'membrete_url': membreteUrl,
+      'membrete': membrete,
       'membrete_public_id': membretePublicId,
     };
   }

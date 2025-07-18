@@ -1,8 +1,9 @@
-// lib/screens/pasoEstablecimiento/form_establecimiento.dart
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../models/Mestablecimiento.dart';
 import '../../providers/pestablecimiento.dart';
 import '../../utils/cloudinary_upload.dart';
@@ -32,13 +33,21 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
   bool _subiendoMembrete = false;
 
   final ImagePicker _picker = ImagePicker();
+  final CloudinaryService _cloudinaryService = CloudinaryService();
+
+  // Nuevas variables para guardar el public_id de cada imagen
+  String? _logotipoPublicId;
+  String? _membretePublicId;
 
   @override
   void initState() {
     super.initState();
     _nombreController = TextEditingController(text: widget.establecimiento?.nombre ?? '');
-    _logotipoController = TextEditingController(text: widget.establecimiento?.logotipoUrl ?? '');
-    _membreteController = TextEditingController(text: widget.establecimiento?.membreteUrl ?? '');
+    _logotipoController = TextEditingController(text: widget.establecimiento?.logotipo ?? '');
+    _membreteController = TextEditingController(text: widget.establecimiento?.membrete ?? '');
+
+    _logotipoPublicId = widget.establecimiento?.logotipoPublicId;
+    _membretePublicId = widget.establecimiento?.membretePublicId;
   }
 
   @override
@@ -61,18 +70,27 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
       }
     });
 
-    final url = await subirImagenCloudinary(pickedFile.path);
+    final resultado = await _cloudinaryService.subirImagen(pickedFile.path);
 
-    if (url != null) {
-      if (esLogotipo) {
-        _logotipoController.text = url;
-      } else {
-        _membreteController.text = url;
-      }
+    if (resultado != null && resultado['secure_url'] != null && resultado['public_id'] != null) {
+      final url = resultado['secure_url']!;
+      final publicId = resultado['public_id']!;
+
+      setState(() {
+        if (esLogotipo) {
+          _logotipoController.text = url;
+          _logotipoPublicId = publicId;
+        } else {
+          _membreteController.text = url;
+          _membretePublicId = publicId;
+        }
+      });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al subir la imagen')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al subir la imagen')),
+        );
+      }
     }
 
     setState(() {
@@ -81,7 +99,7 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
     });
   }
 
-  void _guardar() async {
+  Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
     final nombre = _nombreController.text.trim();
@@ -91,23 +109,29 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
     try {
       if (widget.esEditar && widget.establecimiento != null) {
         await ref.read(establecimientosProvider.notifier).editarEstablecimiento(
-              id: widget.establecimiento!.id,
-              nombre: nombre,
-              logotipoUrl: logotipo,
-              membreteUrl: membrete,
-            );
+          id: widget.establecimiento!.id,
+          nombre: nombre,
+          logotipo: logotipo,
+          logotipoPublicId: _logotipoPublicId,
+          membrete: membrete,
+          membretePublicId: _membretePublicId,
+        );
       } else {
         await ref.read(establecimientosProvider.notifier).agregarEstablecimiento(
-              nombre: nombre,
-              logotipoUrl: logotipo,
-              membreteUrl: membrete,
-            );
+          nombre: nombre,
+          logotipo: logotipo,
+          logotipoPublicId: _logotipoPublicId,
+          membrete: membrete,
+          membretePublicId: _membretePublicId,
+        );
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e')),
+        );
+      }
     }
   }
 
@@ -121,6 +145,7 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Nombre
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(labelText: 'Nombre'),
@@ -128,81 +153,51 @@ class _FormEstablecimientoState extends ConsumerState<FormEstablecimiento> {
               ),
               const SizedBox(height: 16),
 
-              // Botón cargar logotipo
+              // Logotipo
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Logotipo (opcional)',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
+                child: const Text('Logotipo (opcional)', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _subiendoLogotipo ? null : () => _subirImagen(true),
                 icon: _subiendoLogotipo
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.upload),
                 label: const Text('Cargar logotipo'),
               ),
               if (_logotipoController.text.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Image.network(
-                    _logotipoController.text,
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.cover,
-                  ),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Image.network(_logotipoController.text, height: 80, width: 80, fit: BoxFit.cover),
                 ),
               const SizedBox(height: 16),
 
-              // Botón cargar membrete
+              // Membrete
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Membrete (opcional)',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
+                child: const Text('Membrete (opcional)', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _subiendoMembrete ? null : () => _subirImagen(false),
                 icon: _subiendoMembrete
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.upload_file),
                 label: const Text('Cargar membrete'),
               ),
               if (_membreteController.text.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Image.network(
-                    _membreteController.text,
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.cover,
-                  ),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Image.network(_membreteController.text, height: 80, width: 80, fit: BoxFit.cover),
                 ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _guardar,
-          child: const Text('Guardar'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ElevatedButton(onPressed: _guardar, child: const Text('Guardar')),
       ],
     );
   }
