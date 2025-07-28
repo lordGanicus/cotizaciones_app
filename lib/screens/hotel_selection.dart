@@ -10,7 +10,7 @@ import 'salon/salones_screen.dart';
 import 'habitaciones/habitaciones_screen.dart';
 import 'gestion_general_screen.dart';
 import 'pasossalon/crear_cotizacion_salon_step1.dart';
-import 'pasoEstablecimiento/pantalla_establecimientos.dart'; 
+import 'pasoEstablecimiento/pantalla_establecimientos.dart';
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -25,12 +25,45 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
   Map<String, dynamic>? hotelUnico;
   List<Map<String, dynamic>> hotelesMultiples = [];
   Map<String, dynamic>? datosUsuario;
+  List<Map<String, dynamic>> cotizaciones = [];
+  List<Map<String, dynamic>> cotizacionesFiltradas = [];
   bool isLoading = true;
+  bool showCreateDialog = false;
+  bool showManageDialog = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _cargarInformacion();
+    _searchController.addListener(_filtrarCotizaciones);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filtrarCotizaciones() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        cotizacionesFiltradas = List.from(cotizaciones);
+      } else {
+        cotizacionesFiltradas = cotizaciones.where((cotizacion) {
+          final fecha = cotizacion['fecha_creacion'].toString().toLowerCase();
+          final cliente = (cotizacion['cliente_nombre'] ?? '').toString().toLowerCase();
+          final tipo = (cotizacion['tipo'] ?? '').toString().toLowerCase();
+          final detalle = (cotizacion['detalle'] ?? '').toString().toLowerCase();
+          
+          return fecha.contains(query) ||
+                 cliente.contains(query) ||
+                 tipo.contains(query) ||
+                 detalle.contains(query);
+        }).toList();
+      }
+    });
   }
 
   Future<void> _cargarInformacion() async {
@@ -38,10 +71,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
+      // Cargar datos del usuario
       final responseUser = await supabase
           .from('usuarios')
           .select(
-              'nombre_completo, ci, id_establecimiento, establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo, id)')
+              'nombre_completo, ci, genero, avatar, id_establecimiento, establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo, id)')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -49,38 +83,21 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
         datosUsuario = {
           'nombre': responseUser['nombre_completo'],
           'ci': responseUser['ci'],
+          'genero': responseUser['genero'],
+          'avatar': responseUser['avatar'],
         };
 
         if (responseUser['establecimientos'] != null) {
           setState(() {
             hotelUnico = responseUser['establecimientos'];
-            isLoading = false;
           });
-          return;
         }
       }
 
-      final responseMultiples = await supabase
-          .from('usuarios_establecimientos')
-          .select('establecimientos(nombre, logotipo, id)')
-          .eq('id_usuario', user.id);
-
-      if (responseMultiples != null && responseMultiples.isNotEmpty) {
-        List<Map<String, dynamic>> hoteles = (responseMultiples as List)
-            .map<Map<String, dynamic>>(
-                (e) => e['establecimientos'] as Map<String, dynamic>)
-            .toList();
-
-        setState(() {
-          hotelesMultiples = hoteles;
-          isLoading = false;
-        });
-        return;
-      }
+      // Cargar cotizaciones con más detalle
+      await _cargarCotizaciones();
 
       setState(() {
-        hotelUnico = null;
-        hotelesMultiples = [];
         isLoading = false;
       });
     } catch (e) {
@@ -91,17 +108,79 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _cargarCotizaciones() async {
+  Future<void> _cargarCotizaciones() async {
     final user = supabase.auth.currentUser;
-    if (user == null) return [];
+    if (user == null) return;
 
-    final response = await supabase
-        .from('cotizaciones')
-        .select()
-        .eq('id_usuario', user.id)
-        .order('fecha_creacion', ascending: false);
+    try {
+      final response = await supabase
+          .from('cotizaciones')
+          .select('''
+            id,
+            fecha_creacion,
+            estado,
+            tipo,
+            cliente_nombre,
+            detalle,
+            monto_total
+          ''')
+          .eq('id_usuario', user.id)
+          .order('fecha_creacion', ascending: false);
 
-    return response;
+      setState(() {
+        cotizaciones = List<Map<String, dynamic>>.from(response);
+        cotizacionesFiltradas = List.from(cotizaciones);
+      });
+    } catch (e) {
+      print('Error al cargar cotizaciones: $e');
+      setState(() {
+        cotizaciones = [];
+        cotizacionesFiltradas = [];
+      });
+    }
+  }
+
+  Widget _buildAvatar() {
+    if (datosUsuario?['avatar'] != null) {
+      return CircleAvatar(
+        radius: 25,
+        backgroundImage: NetworkImage(datosUsuario!['avatar']),
+        onBackgroundImageError: (_, __) {},
+        child: datosUsuario!['avatar'] == null ? _getDefaultAvatar() : null,
+      );
+    }
+    return CircleAvatar(
+      radius: 25,
+      backgroundColor: Colors.grey[300],
+      child: _getDefaultAvatar(),
+    );
+  }
+
+  Widget _getDefaultAvatar() {
+    final genero = datosUsuario?['genero']?.toString().toLowerCase();
+    if (genero == 'masculino' || genero == 'm') {
+      return const Icon(Icons.person, color: Colors.blue, size: 30);
+    } else if (genero == 'femenino' || genero == 'f') {
+      return const Icon(Icons.person, color: Colors.pink, size: 30);
+    }
+    return const Icon(Icons.person, color: Colors.grey, size: 30);
+  }
+
+  String _formatearFecha(String fechaIso) {
+    try {
+      final fecha = DateTime.parse(fechaIso);
+      return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+    } catch (e) {
+      return fechaIso.split('T').first;
+    }
+  }
+
+  String _obtenerTipo(Map<String, dynamic> cotizacion) {
+    if (cotizacion['tipo'] != null) return cotizacion['tipo'];
+    
+    // Lógica para determinar tipo basado en otros campos
+    // Puedes ajustar esto según tu estructura de BD
+    return 'General';
   }
 
   Future<void> _crearNuevaCotizacionHabitacion() async {
@@ -110,9 +189,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     final nuevaCotizacion = await supabase.from('cotizaciones').insert({
       'id_usuario': user.id,
+      'tipo': 'Habitación',
     }).select().single();
 
     if (context.mounted) {
+      setState(() => showCreateDialog = false);
       final idCotizacion = nuevaCotizacion['id'];
       Navigator.push(
         context,
@@ -130,9 +211,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     final nuevaCotizacion = await supabase.from('cotizaciones').insert({
       'id_usuario': user.id,
+      'tipo': 'Salón',
     }).select().single();
 
     if (context.mounted) {
+      setState(() => showCreateDialog = false);
       final idCotizacion = nuevaCotizacion['id'];
       Navigator.push(
         context,
@@ -153,9 +236,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     final nuevaCotizacion = await supabase.from('cotizaciones').insert({
       'id_usuario': user.id,
+      'tipo': 'Servicio',
     }).select().single();
 
     if (context.mounted) {
+      setState(() => showCreateDialog = false);
       final idCotizacion = nuevaCotizacion['id'];
       final nombre = datosUsuario?['nombre'] ?? 'Sin nombre';
       final ci = datosUsuario?['ci'] ?? 'Sin CI';
@@ -173,178 +258,525 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     }
   }
 
+  Widget _buildCreateDialog() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: Material(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.create, color: Color(0xFF2D4059)),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Crear',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D4059),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildDialogButton(
+                'Crear cotización de Habitación',
+                Icons.bed,
+                _crearNuevaCotizacionHabitacion,
+              ),
+              const SizedBox(height: 10),
+              _buildDialogButton(
+                'Crear cotización de Salón',
+                Icons.event,
+                _crearNuevaCotizacionSalon,
+              ),
+              const SizedBox(height: 10),
+              _buildDialogButton(
+                'Crear cotización de Servicios',
+                Icons.restaurant_menu,
+                _crearNuevaCotizacionComida,
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () => setState(() => showCreateDialog = false),
+                child: const Text(
+                  'CANCELAR',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManageDialog() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: Material(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.settings, color: Color(0xFF2D4059)),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Gestionar',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D4059),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildDialogButton(
+                'Gestionar Servicios Generales',
+                Icons.manage_accounts,
+                () {
+                  setState(() => showManageDialog = false);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const GestionGeneralScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildDialogButton(
+                'Gestionar Establecimiento',
+                Icons.business,
+                () {
+                  setState(() => showManageDialog = false);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PantallaEstablecimientos(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildDialogButton(
+                'Crear Usuario',
+                Icons.person_add,
+                () {
+                  setState(() => showManageDialog = false);
+                  // TODO: Aquí va el redireccionamiento para crear usuario
+                  // Navigator.push(context, MaterialPageRoute(builder: (_) => CrearUsuarioPage()));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Función de crear usuario pendiente de implementar')),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () => setState(() => showManageDialog = false),
+                child: const Text(
+                  'CANCELAR',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogButton(String text, IconData icon, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, color: Colors.white),
+        label: Text(
+          text,
+          style: const TextStyle(color: Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00B894),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(5),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
+        backgroundColor: Color(0xFFEAEAEA),
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inicio'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (hotelUnico != null) ...[
-                  Center(
-                    child: Column(
+      backgroundColor: Color(0xFFEAEAEA),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              // Header azul claro
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2D4059),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 8,
+                      offset: Offset(5, 5),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
                       children: [
-                        Text(
-                          hotelUnico!['nombre'],
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
+                        IconButton(
+                          onPressed: () => Navigator.of(context).maybePop(),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 24,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        if (hotelUnico!['logotipo'] != null)
-                          Image.network(
-                            hotelUnico!['logotipo'],
-                            height: 100,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.image_not_supported),
-                          ),
-                        const SizedBox(height: 20),
-                        if (datosUsuario != null) ...[
-                          Text('👤 Usuario: ${datosUsuario!['nombre']}'),
-                          Text('🪪 CI: ${datosUsuario!['ci']}'),
-                        ],
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _crearNuevaCotizacionSalon,
-                          icon: const Icon(Icons.event),
-                          label: const Text('Crear cotización de salón'),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _crearNuevaCotizacionHabitacion,
-                          icon: const Icon(Icons.bed),
-                          label: const Text('Crear cotización de habitación'),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _crearNuevaCotizacionComida,
-                          icon: const Icon(Icons.restaurant_menu),
-                          label: const Text('Crear cotización de comida'),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const GestionGeneralScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.manage_accounts),
-                          label: const Text(
-                              'Gestionar Servicios, Refrigerios, Salones y Habitaciones'),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Tus cotizaciones anteriores:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        FutureBuilder<List<Map<String, dynamic>>>(
-                          future: _cargarCotizaciones(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-
-                            final cotizaciones = snapshot.data!;
-                            if (cotizaciones.isEmpty) {
-                              return const Center(
-                                  child:
-                                      Text('No hay cotizaciones registradas.'));
-                            }
-
-                            return ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: cotizaciones.length,
-                              itemBuilder: (context, index) {
-                                final c = cotizaciones[index];
-                                return ListTile(
-                                  title: Text(
-                                      'Cotización del ${c['fecha_creacion'].toString().split('T').first}'),
-                                  subtitle: Text(
-                                      'Estado: ${c['estado'] ?? 'N/D'}'),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () {
-                                    // Navegar a resumen futuro
-                                  },
-                                );
-                              },
-                            );
-                          },
                         ),
                       ],
                     ),
                   ),
-                ],
-                if (hotelesMultiples.isNotEmpty) ...[
-                  const Text(
-                    'Selecciona un hotel para continuar:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  ...hotelesMultiples.map((hotel) {
-                    return ListTile(
-                      leading: hotel['logotipo'] != null
-                          ? Image.network(hotel['logotipo'],
-                              width: 50,
-                              height: 50,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.image_not_supported))
-                          : const Icon(Icons.hotel),
-                      title: Text(hotel['nombre']),
-                      onTap: () {
-                        // Aquí podrías manejar navegación
-                      },
-                    );
-                  }),
-                ],
-                if (hotelUnico == null &&
-                    hotelesMultiples.isEmpty &&
-                    !isLoading) ...[
-                  const Center(
-                    child: Text(
-                        'No se encontraron hoteles asignados a este usuario.'),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PantallaEstablecimientos(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.business),
-                  label: const Text('Gestionar Establecimientos'),
                 ),
-              ],
+              ),
+              
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Logo
+                      if (hotelUnico != null && hotelUnico!['logotipo'] != null) ...[
+                        Center(
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2D4059),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                hotelUnico!['logotipo'],
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.business,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      
+                      // Usuario info
+                      if (datosUsuario != null) ...[
+                        Row(
+                          children: [
+                            _buildAvatar(),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    datosUsuario!['nombre'] ?? 'Sin nombre',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'CI: ${datosUsuario!['ci'] ?? 'Sin CI'}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 30),
+                      ],
+                      
+                      // Líneas divisorias y título
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 2,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Historial de cotizaciones',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Buscar Cotización'),
+                                  content: TextField(
+                                    controller: _searchController,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Escriba para buscar...',
+                                      prefixIcon: Icon(Icons.search),
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cerrar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF00B894),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // Encabezados de tabla
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          children: [
+                            Expanded(flex: 3, child: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
+                            Expanded(flex: 3, child: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
+                            Expanded(flex: 2, child: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
+                            Expanded(flex: 4, child: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
+                          ],
+                        ),
+                      ),
+                      
+                      // Lista de cotizaciones
+                      if (cotizacionesFiltradas.isEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(
+                            child: Text(
+                              'No hay cotizaciones registradas.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        ...cotizacionesFiltradas.map((cotizacion) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey[300]!),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    _formatearFecha(cotizacion['fecha_creacion']),
+                                    style: const TextStyle(fontSize: 8),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    cotizacion['cliente_nombre'] ?? 'N/D',
+                                    style: const TextStyle(fontSize: 8),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    _obtenerTipo(cotizacion),
+                                    style: const TextStyle(fontSize: 8),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 4,
+                                  child: Text(
+                                    cotizacion['detalle'] ?? 'Sin detalle disponible',
+                                    style: const TextStyle(fontSize: 8),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                      
+                      const SizedBox(height: 120), // Espacio para los botones flotantes
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // Botones flotantes en la parte inferior
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 98,
+              decoration: const BoxDecoration(
+                color: Color(0xFF2D4059),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: showCreateDialog ? const Color(0xFF00B894) : Colors.transparent,
+                      child: InkWell(
+                        onTap: () => setState(() {
+                          showCreateDialog = !showCreateDialog;
+                          showManageDialog = false;
+                        }),
+                        child: Container(
+                          height: 98,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Crear',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Material(
+                      color: showManageDialog ? const Color(0xFF00B894) : Colors.transparent,
+                      child: InkWell(
+                        onTap: () => setState(() {
+                          showManageDialog = !showManageDialog;
+                          showCreateDialog = false;
+                        }),
+                        child: Container(
+                          height: 98,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.folder,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Gestionar',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+          
+          // Diálogos superpuestos
+          if (showCreateDialog)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => showCreateDialog = false),
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(child: _buildCreateDialog()),
+                ),
+              ),
+            ),
+          
+          if (showManageDialog)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => showManageDialog = false),
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(child: _buildManageDialog()),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

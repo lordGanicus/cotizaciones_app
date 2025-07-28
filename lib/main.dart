@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/hotel_selection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -33,8 +34,8 @@ Widget build(BuildContext context) {
         background: const Color(0xFFF8F9FA),
         onBackground: const Color(0xFF212529),
       ),
-      scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-      cardTheme: CardTheme(
+       scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+      cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -128,7 +129,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData && snapshot.data!.session != null) {
-          return const MainAppScreen(); // Cambiado a MainAppScreen
+          return const MainAppScreen();
         }
         
         return const LoginPage();
@@ -230,90 +231,130 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF8F9FA),
-              Color(0xFFE9ECEF),
-            ],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'COTIZACIONES',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.hotelColors['Rey Palac'],
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Sistema profesional de gestión hotelera',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF6C757D),
-                        ),
-                      ),
-                    ],
+      backgroundColor: const Color(0xFFEAEAEA), // Color de fondo 
+      body: SafeArea(
+        child: Stack(
+          children: [
+
+            // Imagen superior
+            Positioned(
+              top: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 180,
+                  height: 160,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/imgLogin.png'),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 40),
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+
+            // Título principal
+            Positioned(
+              top: 220,
+              left: 33,
+              right: 33,
+              child: Column(
+                children: [
+                  const Text(
+                    'COTIZACIONES',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tu trabajo más simple, tus cotizaciones más rápidas',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.black54,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+
+            // Contenedor del formulario
+            Positioned(
+              top: 300,
+              left: 18,
+              right: 18,
+              bottom: 20,
+              child: SingleChildScrollView(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: const Color(0x5C2D4059),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0x42000000),
+                        offset: const Offset(6, 6),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Form(
                       key: _formKey,
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Iniciar sesión',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF212529),
-                            ),
+                        // Título del formulario
+                        const Text(
+                          'Iniciar Sesión',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black,
                           ),
-                          const SizedBox(height: 24),
-                          TextFormField(
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Campo de email
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
-                              labelText: 'Correo electrónico',
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: Colors.grey.shade600,
+                              labelText: 'Correo Electrónico',
+                              labelStyle: const TextStyle(
+                                fontSize: 14.3,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFA3A3A3),
                               ),
-                              floatingLabelStyle: TextStyle(
-                                color: AppColors.hotelColors['Rey Palac'],
+                              prefixIcon: const Icon(
+                                Icons.email_outlined,
+                                color: Color(0xFFA3A3A3),
+                                size: 19,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              floatingLabelStyle: const TextStyle(
+                                color: Color(0xFF05372D),
                               ),
                             ),
                             validator: (value) =>
@@ -321,27 +362,48 @@ class _LoginPageState extends State<LoginPage> {
                                 ? 'Ingrese un correo válido' 
                                 : null,
                           ),
-                          const SizedBox(height: 16),
-                          TextFormField(
+                        ),
+
+                        const SizedBox(height: 17),
+
+                        // Campo de contraseña
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             decoration: InputDecoration(
                               labelText: 'Contraseña',
-                              prefixIcon: Icon(
+                              labelStyle: const TextStyle(
+                                fontSize: 14.3,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFA3A3A3),
+                              ),
+                              prefixIcon: const Icon(
                                 Icons.lock_outline,
-                                color: Colors.grey.shade600,
+                                color: Color(0xFFA3A3A3),
+                                size: 18,
                               ),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword 
                                     ? Icons.visibility_outlined 
                                     : Icons.visibility_off_outlined,
-                                  color: Colors.grey.shade600,
+                                  color: const Color(0xFFA3A3A3),
+                                  size: 24,
                                 ),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
-                              floatingLabelStyle: TextStyle(
-                                color: AppColors.hotelColors['Rey Palac'],
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              floatingLabelStyle: const TextStyle(
+                                color: Color(0xFF05372D),
                               ),
                             ),
                             validator: (value) =>
@@ -349,72 +411,112 @@ class _LoginPageState extends State<LoginPage> {
                                 ? 'Mínimo 6 caracteres' 
                                 : null,
                           ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _resetPassword,
-                              child: const Text('¿Olvidó su contraseña?'),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Enlace de contraseña olvidada
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _resetPassword,
+                            child: const Text(
+                              '¿Olvidaste tu contraseña?',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF05372D),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 24),
-                          if (_errorMessage != null)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Mensaje de error
+                        if (_errorMessage != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (_errorMessage != null) const SizedBox(height: 16),
+
+                        // Botón de iniciar sesión
+                        Container(
+                          width: double.infinity,
+                          height: 60, 
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4ECDC4), Color(0xFF44B09E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                offset: const Offset(0, 4),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _signIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red.shade700,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: TextStyle(
-                                        color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
-                          if (_errorMessage != null) const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _signIn,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                            child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Iniciar Sesión',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                elevation: 2,
-                              ),
-                              child: _isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text('INICIAR SESIÓN'),
-                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            ),
+          ],
+        
         ),
       ),
     );
@@ -448,83 +550,167 @@ class MainAppScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cotizaciones App'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context),
-            tooltip: 'Cerrar sesión',
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFEAEAEA),
+              Color(0xFFD0D0D0),
+              Color(0xFFB8B8B8),
+            ],
+            stops: [0.0, 0.7, 1.0],
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
+        ),
+        child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+              // Botón de cerrar sesión arriba
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.black54),
+                    onPressed: () => _signOut(context),
+                    tooltip: 'Cerrar sesión',
+                  ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.check_circle_outlined,
-                      size: 80,
-                      color: Colors.green,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '¡Bienvenid${user?.userMetadata?['gender'] == 'female' ? 'a' : 'o'}!',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212529),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      user?.email ?? '',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: const Color(0xFF6C757D),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                         Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HotelSelectionPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('COMENZAR'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+              ),
+
+              // Contenido principal centrado
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Imagen de bienvenida
+                      Container(
+                        width: 250,
+                        height: 200,
+                        decoration: const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('assets/welcome.png'),
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      const SizedBox(height: 40),
+
+                      // Ícono de verificación
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4ECDC4),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF23688C).withOpacity(0.4),
+                              blurRadius: 25,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          size: 50,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      // Texto bienvenida
+                      const Text(
+                        'BIENVENIDO',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                          letterSpacing: 2,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Email
+                      Text(
+                        user?.email ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black54,
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Botón Comenzar justo debajo
+                      Container(
+                        width: 320,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF4ECDC4), Color(0xFF44B09E)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF23688C).withOpacity(0.5),
+                              blurRadius: 18,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const HotelSelectionPage(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Comenzar',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
