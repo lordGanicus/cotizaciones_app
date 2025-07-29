@@ -95,8 +95,9 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
           });
         }
       }
-
+      
       // Cargar cotizaciones con más detalle
+
       await _cargarCotizaciones();
 
       setState(() {
