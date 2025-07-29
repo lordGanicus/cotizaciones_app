@@ -1,3 +1,5 @@
+/*
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/usuario_model.dart';
@@ -201,4 +203,4 @@ class _RegistroUsuarioPageState extends State<RegistroUsuarioPage> {
       ),
     );
   }
-}
+}*/

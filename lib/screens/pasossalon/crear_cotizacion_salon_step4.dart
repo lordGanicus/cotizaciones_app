@@ -8,11 +8,13 @@ import 'resumen_final_cotizacion_salon.dart';
 class Paso4CotizacionSalonPage extends ConsumerWidget {
   final String idCotizacion;
   final String idEstablecimiento;
+  final String idUsuario;
 
   const Paso4CotizacionSalonPage({
     Key? key,
     required this.idCotizacion,
     required this.idEstablecimiento,
+    required this.idUsuario,
   }) : super(key: key);
 
   @override
@@ -92,21 +94,61 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
               label: const Text('Guardar cotización'),
               onPressed: () async {
                 final supabase = Supabase.instance.client;
+
                 try {
-                  // Insertar cotización principal
+                  String? idCliente;
+
+                  // Buscar cliente por CI si existe
+                  if (cotizacion.ciCliente.isNotEmpty) {
+                    final clientesPorCI = await supabase
+                        .from('clientes')
+                        .select('id')
+                        .eq('ci', cotizacion.ciCliente)
+                        .limit(1);
+
+                    if (clientesPorCI.isNotEmpty) {
+                      idCliente = clientesPorCI[0]['id'] as String;
+                    }
+                  }
+
+                  // Si no se encontró por CI, buscar por nombre
+                  if (idCliente == null) {
+                    final clientesPorNombre = await supabase
+                        .from('clientes')
+                        .select('id')
+                        .eq('nombre_completo', cotizacion.nombreCliente)
+                        .limit(1);
+
+                    if (clientesPorNombre.isNotEmpty) {
+                      idCliente = clientesPorNombre[0]['id'] as String;
+                    }
+                  }
+
+                  // Si no existe, crear cliente nuevo
+                  if (idCliente == null) {
+                    final insertRes = await supabase.from('clientes').insert({
+                      'nombre_completo': cotizacion.nombreCliente,
+                      if (cotizacion.ciCliente.isNotEmpty) 'ci': cotizacion.ciCliente,
+                    }).select('id').single();
+
+                    idCliente = insertRes['id'] as String;
+                  }
+
+                  // Insertar cotización principal (sin campo 'tipo')
                   final cotizacionRes = await supabase
                       .from('cotizaciones')
                       .insert({
-                        'id_usuario': cotizacion.idUsuario,
+                        'id_usuario': idUsuario,
                         'estado': 'borrador',
                         'total': total,
+                        'id_cliente': idCliente,
                       })
                       .select()
                       .single();
 
                   final idNuevaCotizacion = cotizacionRes['id'] as String;
 
-                  // Insertar alquiler salón como item
+                  // Insertar item de alquiler de salón con 'tipo'
                   await supabase.from('items_cotizacion').insert({
                     'id_cotizacion': idNuevaCotizacion,
                     'servicio': 'Alquiler de salón',
@@ -126,7 +168,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                     }),
                   });
 
-                  // Insertar ítems adicionales
+                  // Insertar ítems adicionales con 'tipo'
                   for (final i in cotizacion.itemsAdicionales) {
                     await supabase.from('items_cotizacion').insert({
                       'id_cotizacion': idNuevaCotizacion,

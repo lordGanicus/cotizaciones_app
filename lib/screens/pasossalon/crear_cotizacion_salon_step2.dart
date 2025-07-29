@@ -78,6 +78,7 @@ class Paso2CotizacionSalonPage extends ConsumerWidget {
                     builder: (_) => Paso3CotizacionSalonPage(
                       idCotizacion: idCotizacion,
                       idEstablecimiento: idEstablecimiento,
+                      idUsuario: idUsuario,
                     ),
                   ),
                 );

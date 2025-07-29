@@ -30,8 +30,56 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
     }
 
     try {
+      String? idCliente;
+
+      if (ciCliente.isNotEmpty) {
+        // Buscar cliente por CI
+        final clientes = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('ci', ciCliente)
+            .limit(1);
+
+        if (clientes.isNotEmpty) {
+          idCliente = clientes[0]['id'] as String;
+        }
+      }
+
+      // Si no encontró por CI o no hay CI, buscar por nombre
+      if (idCliente == null) {
+        final clientesPorNombre = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('nombre_completo', nombreCliente)
+            .limit(1);
+
+        if (clientesPorNombre.isNotEmpty) {
+          idCliente = clientesPorNombre[0]['id'] as String;
+        }
+      }
+
+      // Si no existe cliente, crear nuevo
+      if (idCliente == null) {
+        final insertRes = await supabase.from('clientes').insert({
+          'nombre_completo': nombreCliente,
+          if (ciCliente.isNotEmpty) 'ci': ciCliente,
+          // Agrega otros campos necesarios para el cliente aquí
+        }).select('id').single();
+
+        idCliente = insertRes['id'] as String;
+      }
+
+      // Asociar cotización con cliente
+      await supabase
+          .from('cotizaciones')
+          .update({'id_cliente': idCliente})
+          .eq('id', idCotizacion);
+
+      double totalCotizacion = 0.0;
+
       for (final habitacion in habitaciones) {
         final total = habitacion.cantidad * habitacion.tarifa * habitacion.cantidadNoches;
+        totalCotizacion += total;
 
         final detalles = {
           'nombre_habitacion': habitacion.nombreHabitacion,
@@ -48,6 +96,7 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
 
         await supabase.from('items_cotizacion').insert({
           'id_cotizacion': idCotizacion,
+          'tipo': 'habitacion',
           'servicio': 'Hab. ${habitacion.nombreHabitacion}',
           'unidad': 'Noche',
           'cantidad': habitacion.cantidad * habitacion.cantidadNoches,
@@ -57,15 +106,18 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
         });
       }
 
-      // Vaciar lista luego de guardar
+      await supabase
+          .from('cotizaciones')
+          .update({'total': totalCotizacion})
+          .eq('id', idCotizacion);
+
       ref.read(cotizacionHabitacionProvider.notifier).limpiar();
 
-      // Ir al resumen final
       if (context.mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ResumenFinalPage(
+            builder: (_) => ResumenFinalCotizacionHabitacionPage(
               idCotizacion: idCotizacion,
               nombreCliente: nombreCliente,
               ciCliente: ciCliente,

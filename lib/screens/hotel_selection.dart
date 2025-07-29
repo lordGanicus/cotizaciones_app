@@ -11,6 +11,8 @@ import 'habitaciones/habitaciones_screen.dart';
 import 'gestion_general_screen.dart';
 import 'pasossalon/crear_cotizacion_salon_step1.dart';
 import 'pasoEstablecimiento/pantalla_establecimientos.dart';
+import '../screens/pasosUsuarios/usuarios_list.dart';
+
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -53,14 +55,14 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       } else {
         cotizacionesFiltradas = cotizaciones.where((cotizacion) {
           final fecha = cotizacion['fecha_creacion'].toString().toLowerCase();
-          final cliente = (cotizacion['cliente_nombre'] ?? '').toString().toLowerCase();
+          final cliente = (cotizacion['nombre_cliente'] ?? '').toString().toLowerCase();
           final tipo = (cotizacion['tipo'] ?? '').toString().toLowerCase();
-          final detalle = (cotizacion['detalle'] ?? '').toString().toLowerCase();
+          final descripcion = (cotizacion['descripcion'] ?? '').toString().toLowerCase();
           
           return fecha.contains(query) ||
                  cliente.contains(query) ||
                  tipo.contains(query) ||
-                 detalle.contains(query);
+                 descripcion.contains(query);
         }).toList();
       }
     });
@@ -113,19 +115,9 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
-      final response = await supabase
-          .from('cotizaciones')
-          .select('''
-            id,
-            fecha_creacion,
-            estado,
-            tipo,
-            cliente_nombre,
-            detalle,
-            monto_total
-          ''')
-          .eq('id_usuario', user.id)
-          .order('fecha_creacion', ascending: false);
+      final response = await supabase.rpc('obtener_cotizaciones_detalladas', params: {
+        'p_id_usuario': user.id
+      });
 
       setState(() {
         cotizaciones = List<Map<String, dynamic>>.from(response);
@@ -189,7 +181,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     final nuevaCotizacion = await supabase.from('cotizaciones').insert({
       'id_usuario': user.id,
-      'tipo': 'Habitación',
     }).select().single();
 
     if (context.mounted) {
@@ -211,7 +202,6 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
 
     final nuevaCotizacion = await supabase.from('cotizaciones').insert({
       'id_usuario': user.id,
-      'tipo': 'Salón',
     }).select().single();
 
     if (context.mounted) {
@@ -344,8 +334,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2D4059),
                     ),
-                  ),
-                ],
+              )],
               ),
               const SizedBox(height: 20),
               _buildDialogButton(
@@ -381,10 +370,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                 Icons.person_add,
                 () {
                   setState(() => showManageDialog = false);
-                  // TODO: Aquí va el redireccionamiento para crear usuario
-                  // Navigator.push(context, MaterialPageRoute(builder: (_) => CrearUsuarioPage()));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Función de crear usuario pendiente de implementar')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const UsuarioListPage(),
+                    ),
                   );
                 },
               ),
@@ -434,7 +424,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFFEAEAEA),
+      backgroundColor: const Color(0xFFEAEAEA),
       body: Stack(
         children: [
           Column(
@@ -597,10 +587,11 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                         child: const Row(
                           children: [
-                            Expanded(flex: 3, child: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
-                            Expanded(flex: 3, child: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
-                            Expanded(flex: 2, child: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
-                            Expanded(flex: 4, child: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8))),
+                            Expanded(flex: 2, child: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Expanded(flex: 2, child: Text('Cliente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Expanded(flex: 2, child: Text('Tipo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Expanded(flex: 4, child: Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            Expanded(flex: 2, child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                           ],
                         ),
                       ),
@@ -628,33 +619,40 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                             child: Row(
                               children: [
                                 Expanded(
-                                  flex: 3,
+                                  flex: 2,
                                   child: Text(
                                     _formatearFecha(cotizacion['fecha_creacion']),
-                                    style: const TextStyle(fontSize: 8),
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
                                 Expanded(
-                                  flex: 3,
+                                  flex: 2,
                                   child: Text(
-                                    cotizacion['cliente_nombre'] ?? 'N/D',
-                                    style: const TextStyle(fontSize: 8),
+                                    cotizacion['nombre_cliente'] ?? 'N/D',
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
                                 Expanded(
                                   flex: 2,
                                   child: Text(
                                     _obtenerTipo(cotizacion),
-                                    style: const TextStyle(fontSize: 8),
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
                                 Expanded(
                                   flex: 4,
                                   child: Text(
-                                    cotizacion['detalle'] ?? 'Sin detalle disponible',
-                                    style: const TextStyle(fontSize: 8),
+                                    cotizacion['descripcion'] ?? 'Sin descripción',
+                                    style: const TextStyle(fontSize: 12),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'Bs. ${cotizacion['total_item']?.toStringAsFixed(2) ?? '0.00'}',
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ),
                               ],
@@ -696,7 +694,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.edit,
                                 color: Colors.white,
                                 size: 24,
@@ -729,7 +727,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.folder,
                                 color: Colors.white,
                                 size: 24,

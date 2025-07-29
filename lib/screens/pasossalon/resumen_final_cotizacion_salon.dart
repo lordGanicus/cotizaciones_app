@@ -85,19 +85,30 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
 
       totalFinal = items.fold<double>(0, (prev, item) {
         double totalItem = 0;
+
+        // Validar campo total
         if (item.containsKey('total') && item['total'] != null) {
           final val = item['total'];
           if (val is num) {
             totalItem = val.toDouble();
           }
         }
+
+        // Si total no existe, calcular cantidad * precio unitario
         if (totalItem == 0) {
-          final cantidad = item['cantidad'] ?? 0;
-          final precioUnitario = item['precio_unitario'] ?? 0;
-          if (precioUnitario is num && cantidad is int) {
-            totalItem = precioUnitario.toDouble() * cantidad;
-          }
+          final cantidadRaw = item['cantidad'];
+          final precioUnitarioRaw = item['precio_unitario'];
+
+          final cantidad = cantidadRaw is int
+              ? cantidadRaw
+              : int.tryParse(cantidadRaw?.toString() ?? '') ?? 0;
+          final precioUnitario = precioUnitarioRaw is num
+              ? precioUnitarioRaw.toDouble()
+              : double.tryParse(precioUnitarioRaw?.toString() ?? '') ?? 0.0;
+
+          totalItem = cantidad * precioUnitario;
         }
+
         return prev + totalItem;
       });
 
@@ -134,8 +145,15 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
 
     final itemsTable = items.map((item) {
       final desc = item['descripcion'] ?? 'Sin descripción';
-      final cantidad = item['cantidad'] ?? 0;
-      final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+      final cantidadRaw = item['cantidad'];
+      final precioUnitarioRaw = item['precio_unitario'];
+
+      final cantidad = cantidadRaw is int
+          ? cantidadRaw
+          : int.tryParse(cantidadRaw?.toString() ?? '') ?? 0;
+      final precioUnitario = precioUnitarioRaw is num
+          ? precioUnitarioRaw.toDouble()
+          : double.tryParse(precioUnitarioRaw?.toString() ?? '') ?? 0.0;
 
       double totalItem = 0;
       if (item.containsKey('total') && item['total'] != null) {
@@ -144,7 +162,7 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
           totalItem = val.toDouble();
         }
       }
-      if (totalItem == 0 && cantidad is int) {
+      if (totalItem == 0) {
         totalItem = precioUnitario * cantidad;
       }
 
@@ -168,23 +186,27 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
             ),
           pw.SizedBox(height: 12),
           pw.Text('La Paz, $fechaActual'),
-          pw.Text('COT N°: ${widget.idCotizacion}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('COT N°: ${widget.idCotizacion}',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 16),
           pw.Text('Señores:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.Text(widget.nombreCliente),
           pw.Text('CI: ${widget.ciCliente}'),
           pw.SizedBox(height: 24),
-          pw.Text('DETALLES DEL EVENTO', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text('DETALLES DEL EVENTO',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           pw.Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
           pw.Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
           pw.SizedBox(height: 16),
-          pw.Text('🧾 Detalle de la propuesta:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('🧾 Detalle de la propuesta:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
           pw.Table.fromTextArray(
             headers: ['Descripción', 'Cantidad', 'P. Unitario', 'Total'],
             data: itemsTable,
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
             headerDecoration: pw.BoxDecoration(color: PdfColors.grey700),
             cellAlignment: pw.Alignment.centerLeft,
             cellPadding: const pw.EdgeInsets.all(6),
@@ -249,7 +271,7 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                       Text('COT N°: ${widget.idCotizacion}',
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 16),
-                      Text('Señores:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const Text('Señores:', style: TextStyle(fontWeight: FontWeight.bold)),
                       Text(widget.nombreCliente),
                       Text('CI: ${widget.ciCliente}'),
                       const SizedBox(height: 24),
@@ -258,8 +280,8 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                       Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
                       Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
                       const SizedBox(height: 16),
-                      Text('🧾 Detalle de la propuesta:',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const Text('🧾 Detalle de la propuesta:',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       Table(
                         border: TableBorder.all(color: Colors.grey.shade300),
@@ -301,8 +323,15 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                           ),
                           ...items.map((item) {
                             final desc = item['descripcion'] ?? 'Sin descripción';
-                            final cantidad = item['cantidad'] ?? 0;
-                            final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+                            final cantidadRaw = item['cantidad'];
+                            final precioUnitarioRaw = item['precio_unitario'];
+
+                            final cantidad = cantidadRaw is int
+                                ? cantidadRaw
+                                : int.tryParse(cantidadRaw?.toString() ?? '') ?? 0;
+                            final precioUnitario = precioUnitarioRaw is num
+                                ? precioUnitarioRaw.toDouble()
+                                : double.tryParse(precioUnitarioRaw?.toString() ?? '') ?? 0.0;
 
                             double totalItem = 0;
                             if (item.containsKey('total') && item['total'] != null) {
@@ -311,7 +340,7 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
                                 totalItem = val.toDouble();
                               }
                             }
-                            if (totalItem == 0 && cantidad is int) {
+                            if (totalItem == 0) {
                               totalItem = precioUnitario * cantidad;
                             }
 
@@ -366,4 +395,3 @@ class _ResumenFinalCotizacionSalonPageState extends State<ResumenFinalCotizacion
     );
   }
 }
-

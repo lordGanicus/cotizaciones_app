@@ -68,20 +68,27 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
     }
   }
 
-  Future<void> _seleccionarHoraInicio(BuildContext context) async {
-    final hora = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (hora != null) {
-      setState(() {
-        _horaInicio = hora;
-      });
-    }
-  }
+  // Nuevo método para seleccionar hora, con formato 24h fijo y picker separado:
+  Future<void> _seleccionarHora(BuildContext context, bool esInicio) async {
+    final ahora = TimeOfDay.now();
+    final horaSeleccionada = await showTimePicker(
+      context: context,
+      initialTime: esInicio ? (_horaInicio ?? ahora) : (_horaFin ?? ahora),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child ?? const SizedBox(),
+        );
+      },
+    );
 
-  Future<void> _seleccionarHoraFin(BuildContext context) async {
-    final hora = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (hora != null) {
+    if (horaSeleccionada != null) {
       setState(() {
-        _horaFin = hora;
+        if (esInicio) {
+          _horaInicio = horaSeleccionada;
+        } else {
+          _horaFin = horaSeleccionada;
+        }
       });
     }
   }
@@ -109,6 +116,13 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
         _horaFin!.hour,
         _horaFin!.minute,
       );
+
+      if (!fin.isAfter(inicio)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La hora fin debe ser posterior a la hora inicio')),
+        );
+        return;
+      }
 
       final participantes = int.tryParse(_participantesController.text) ?? 0;
       final precioSalon = double.tryParse(_precioController.text) ?? 0.0;
@@ -198,7 +212,6 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                 ),
                 validator: (value) => value == null || value.isEmpty ? 'Requerido' : null,
               ),
-
               const SizedBox(height: 24),
               Text('Detalles del evento', style: titleStyle),
               const SizedBox(height: 12),
@@ -219,7 +232,7 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                       icon: const Icon(Icons.calendar_today),
                       label: Text(_fechaEvento == null
                           ? 'Seleccionar fecha'
-                          : '${_fechaEvento!.day}/${_fechaEvento!.month}/${_fechaEvento!.year}'),
+                          : '${_fechaEvento!.day.toString().padLeft(2, '0')}/${_fechaEvento!.month.toString().padLeft(2, '0')}/${_fechaEvento!.year}'),
                     ),
                   ),
                 ],
@@ -229,7 +242,7 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _seleccionarHoraInicio(context),
+                      onPressed: () => _seleccionarHora(context, true),
                       icon: const Icon(Icons.access_time),
                       label: Text(_horaInicio == null
                           ? 'Hora inicio'
@@ -239,7 +252,7 @@ class _Paso1CotizacionSalonPageState extends ConsumerState<Paso1CotizacionSalonP
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _seleccionarHoraFin(context),
+                      onPressed: () => _seleccionarHora(context, false),
                       icon: const Icon(Icons.access_time),
                       label: Text(_horaFin == null
                           ? 'Hora fin'

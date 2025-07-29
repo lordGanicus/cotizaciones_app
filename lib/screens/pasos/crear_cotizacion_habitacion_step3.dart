@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/cotizacion_habitacion.dart';
 import '../../providers/cotizacion_habitacion_provider.dart';
-import 'crear_cotizacion_habitacion_step4.dart';
-import 'seleccionar_habitacion_modal.dart';
+import 'package:cotizaciones_app/screens/pasos/crear_cotizacion_habitacion_step4.dart'; // Ajusta la ruta
 
 class PasoResumenHabitacionesPage extends ConsumerWidget {
   final String idCotizacion;
@@ -21,6 +20,10 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
     return habitaciones.fold(0, (sum, h) => sum + h.subtotal);
   }
 
+  String _formatFecha(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final habitaciones = ref.watch(cotizacionHabitacionProvider);
@@ -34,70 +37,117 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ElevatedButton.icon(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => const SeleccionarHabitacionModal(),
-                );
+                // Aquí puedes abrir modal para agregar habitaciones
               },
               icon: const Icon(Icons.add),
               label: const Text('Agregar habitación'),
             ),
             const SizedBox(height: 16),
 
-            habitaciones.isEmpty
-                ? const Text('No se han agregado habitaciones.')
-                : Expanded(
-                    child: ListView.builder(
-                      itemCount: habitaciones.length,
-                      itemBuilder: (context, index) {
-                        final hab = habitaciones[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                          child: ListTile(
-                            title: Text(
-                              hab.nombreHabitacion,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+            if (habitaciones.isEmpty)
+              const Expanded(
+                child: Center(child: Text('No se han agregado habitaciones.')),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  itemCount: habitaciones.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final h = habitaciones[index];
+                    final subtotal = h.tarifa * h.cantidad * h.cantidadNoches;
+
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              h.nombreHabitacion,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ),
-                            subtitle: Text(
-                              '${hab.cantidad} habs · ${hab.cantidadNoches} noches\n'
-                              'Ingreso: ${_formatDate(hab.fechaIngreso)} · Salida: ${_formatDate(hab.fechaSalida)}\n'
-                              'Tarifa: Bs ${hab.tarifa.toStringAsFixed(2)}',
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Fecha: ${_formatFecha(h.fechaIngreso)} - ${_formatFecha(h.fechaSalida)}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
                             ),
-                            trailing: Text(
-                              'Bs ${hab.subtotal.toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Noches: ${h.cantidadNoches}',
+                              style: const TextStyle(fontSize: 14),
                             ),
-                            isThreeLine: true,
-                            leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Cantidad: ${h.cantidad}',
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Precio Unitario: Bs ${h.tarifa.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Subtotal: Bs ${subtotal.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
             const SizedBox(height: 16),
 
             if (habitaciones.isNotEmpty)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Total: ',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     'Bs ${_calcularTotal(habitaciones).toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                   ),
                 ],
               ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
             if (habitaciones.isNotEmpty)
               ElevatedButton.icon(
@@ -120,16 +170,13 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
                   textStyle: const TextStyle(fontSize: 16),
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
           ],
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }

@@ -1,3 +1,5 @@
+// lib/screens/pasossalon/crear_cotizacion_salon_step3.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/cotizacion_salon.dart';
@@ -7,11 +9,13 @@ import 'crear_cotizacion_salon_step4.dart';
 class Paso3CotizacionSalonPage extends ConsumerWidget {
   final String idCotizacion;
   final String idEstablecimiento;
+  final String idUsuario;  // <-- agregado
 
   const Paso3CotizacionSalonPage({
     Key? key,
     required this.idCotizacion,
     required this.idEstablecimiento,
+    required this.idUsuario,  
   }) : super(key: key);
 
   @override
@@ -90,6 +94,7 @@ class Paso3CotizacionSalonPage extends ConsumerWidget {
                     builder: (_) => Paso4CotizacionSalonPage(
                       idCotizacion: idCotizacion,
                       idEstablecimiento: idEstablecimiento,
+                      idUsuario: idUsuario,  // <-- paso aquí también
                     ),
                   ),
                 );

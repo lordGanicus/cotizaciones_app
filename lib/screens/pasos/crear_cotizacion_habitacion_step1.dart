@@ -75,13 +75,21 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
     }
 
     try {
-      // Upsert cliente (evita duplicados por CI)
-      await supabase.from('clientes').upsert({
+      // Upsert cliente y devolver id
+      final response = await supabase.from('clientes').upsert({
         'ci': ci.isEmpty ? null : ci,
         'nombre_completo': nombre,
-      });
+      }, onConflict: 'ci').select('id').single();
 
-      // Continuar al paso 2 - selección de habitaciones
+      final String idCliente = response['id'] as String;
+
+      // Actualizar cotización con id_cliente
+      await supabase.from('cotizaciones').update({
+        'id_cliente': idCliente,
+      }).eq('id', widget.idCotizacion);
+
+      // Continuar al paso 2
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
