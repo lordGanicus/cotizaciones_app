@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/usuario.dart';
 import '../../providers/usuarios_provider.dart';
@@ -19,12 +20,22 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
   final ciController = TextEditingController();
   final nombreController = TextEditingController();
   final celularController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   String? genero;
   String? idRol;
   String? idEstablecimiento;
   String? idSubestablecimiento;
   List<String> otrosEstablecimientos = [];
+
+  final supabase = Supabase.instance.client;
+
+  // Colores definidos
+  final Color primaryGreen = const Color(0xFF00B894);
+  final Color darkBlue = const Color(0xFF2D4059);
+  final Color lightBackground = const Color(0xFFFAFAFA);
+  final Color errorColor = Colors.redAccent;
 
   @override
   void initState() {
@@ -34,12 +45,57 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       ciController.text = u.ci;
       nombreController.text = u.nombreCompleto;
       celularController.text = u.celular;
+      emailController.text = u.email;
       genero = u.genero;
       idRol = u.idRol;
       idEstablecimiento = u.idEstablecimiento;
       idSubestablecimiento = u.idSubestablecimiento;
       otrosEstablecimientos = List<String>.from(u.otrosEstablecimientos);
     }
+  }
+
+  @override
+  void dispose() {
+    ciController.dispose();
+    nombreController.dispose();
+    celularController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: darkBlue),
+      filled: true,
+      fillColor: lightBackground,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: primaryGreen, width: 2)),
+      errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: errorColor, width: 2)),
+      focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: errorColor, width: 2)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+          color: darkBlue,
+        ),
+      ),
+    );
   }
 
   @override
@@ -51,103 +107,155 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
         : const AsyncValue.data([]);
 
     return Scaffold(
+      backgroundColor: lightBackground,
       appBar: AppBar(
-        title: Text(widget.usuarioEditar == null ? 'Crear usuario' : 'Editar usuario'),
+        backgroundColor: darkBlue,
+        title: Text(widget.usuarioEditar == null ? 'Crear Usuario' : 'Editar Usuario'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: ciController,
-              decoration: const InputDecoration(labelText: 'CI'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
-            ),
-            TextFormField(
-              controller: nombreController,
-              decoration: const InputDecoration(labelText: 'Nombre completo'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
-            ),
-            TextFormField(
-              controller: celularController,
-              decoration: const InputDecoration(labelText: 'Celular'),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: genero,
-              decoration: const InputDecoration(labelText: 'Género'),
-              items: const [
-                DropdownMenuItem(value: 'masculino', child: Text('Masculino')),
-                DropdownMenuItem(value: 'femenino', child: Text('Femenino')),
-                DropdownMenuItem(value: 'otro', child: Text('Otro')),
-              ],
-              onChanged: (value) => setState(() => genero = value),
-              validator: (v) => v == null ? 'Seleccione un género' : null,
-            ),
-           const SizedBox(height: 12),
-           rolesAsync.when(
-                data: (roles) => DropdownButtonFormField<String>(
-                  value: idRol,
-                  decoration: const InputDecoration(labelText: 'Rol'),
-                  items: roles
-                      .map((r) => DropdownMenuItem(value: r.id, child: Text(r.nombre)))
-                      .toList(),
-                  onChanged: (value) => setState(() => idRol = value),
-                  validator: (v) => v == null ? 'Seleccione un rol' : null,
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                buildLabel('CI'),
+                TextFormField(
+                  controller: ciController,
+                  decoration: inputDecoration('CI'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Text('Error cargando roles: $e'),
-              ),
-            const SizedBox(height: 12),
-            establecimientosAsync.when(
-              data: (lista) => DropdownButtonFormField<String>(
-                value: idEstablecimiento,
-                decoration: const InputDecoration(labelText: 'Establecimiento principal'),
-                items: lista
-                    .map((e) => DropdownMenuItem(value: e.id, child: Text(e.nombre)))
-                    .toList(),
-                onChanged: (val) {
-                  setState(() {
-                    idEstablecimiento = val;
-                    idSubestablecimiento = null;
-                    otrosEstablecimientos.remove(val);
-                  });
-                },
-                validator: (v) => v == null ? 'Seleccione un establecimiento' : null,
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Text('Error cargando establecimientos: $e'),
-            ),
-            const SizedBox(height: 12),
-            subestablecimientosAsync.when(
-              data: (subs) => DropdownButtonFormField<String?>(
-                value: idSubestablecimiento,
-                decoration: const InputDecoration(labelText: 'Subestablecimiento (opcional)'),
-                isExpanded: true,
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Ninguno')),
-                  ...subs.map((s) => DropdownMenuItem(value: s.id, child: Text(s.nombre))),
-                ],
-                onChanged: (value) => setState(() => idSubestablecimiento = value),
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Text('Error subestablecimientos: $e'),
-            ),
-            const SizedBox(height: 12),
-            establecimientosAsync.when(
-              data: (lista) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Otros establecimientos (opcional)',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  ...lista
-                      .where((e) => e.id != idEstablecimiento)
-                      .map((e) => CheckboxListTile(
-                            title: Text(e.nombre),
+                const SizedBox(height: 20),
+
+                buildLabel('Nombre Completo'),
+                TextFormField(
+                  controller: nombreController,
+                  decoration: inputDecoration('Nombre completo'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Celular'),
+                TextFormField(
+                  controller: celularController,
+                  decoration: inputDecoration('Celular'),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Género'),
+                DropdownButtonFormField<String>(
+                  value: genero,
+                  decoration: inputDecoration('Género'),
+                  items: const [
+                    DropdownMenuItem(value: 'masculino', child: Text('Masculino')),
+                    DropdownMenuItem(value: 'femenino', child: Text('Femenino')),
+                    DropdownMenuItem(value: 'otro', child: Text('Otro')),
+                  ],
+                  onChanged: (value) => setState(() => genero = value),
+                  validator: (v) => v == null ? 'Seleccione un género' : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Email y password siempre visibles, pero password obligatorio solo al crear
+                buildLabel('Correo electrónico'),
+                TextFormField(
+                  controller: emailController,
+                  decoration: inputDecoration('Correo electrónico'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Ingrese correo';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Correo inválido';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Contraseña'),
+                TextFormField(
+                  controller: passwordController,
+                  decoration: inputDecoration('Contraseña'),
+                  obscureText: true,
+                  validator: (value) {
+                    if (widget.usuarioEditar == null && (value == null || value.isEmpty)) {
+                      return 'Ingrese contraseña';
+                    }
+                    if (value != null && value.isNotEmpty && value.length < 6) {
+                      return 'Mínimo 6 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Rol'),
+                rolesAsync.when(
+                  data: (roles) => DropdownButtonFormField<String>(
+                    value: idRol,
+                    decoration: inputDecoration('Rol'),
+                    items: roles
+                        .map((r) => DropdownMenuItem(value: r.id, child: Text(r.nombre)))
+                        .toList(),
+                    onChanged: (value) => setState(() => idRol = value),
+                    validator: (v) => v == null ? 'Seleccione un rol' : null,
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Text('Error cargando roles: $e'),
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Establecimiento principal'),
+                establecimientosAsync.when(
+                  data: (lista) => DropdownButtonFormField<String>(
+                    value: idEstablecimiento,
+                    decoration: inputDecoration('Establecimiento principal'),
+                    items: lista
+                        .map((e) => DropdownMenuItem(value: e.id, child: Text(e.nombre)))
+                        .toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        idEstablecimiento = val;
+                        idSubestablecimiento = null;
+                        otrosEstablecimientos.remove(val);
+                      });
+                    },
+                    validator: (v) => v == null ? 'Seleccione un establecimiento' : null,
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Text('Error cargando establecimientos: $e'),
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Subestablecimiento (opcional)'),
+                subestablecimientosAsync.when(
+                  data: (subs) => DropdownButtonFormField<String?>(
+                    value: idSubestablecimiento,
+                    decoration: inputDecoration('Subestablecimiento (opcional)'),
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Ninguno')),
+                      ...subs.map((s) => DropdownMenuItem(value: s.id, child: Text(s.nombre))),
+                    ],
+                    onChanged: (value) => setState(() => idSubestablecimiento = value),
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Text('Error cargando subestablecimientos: $e'),
+                ),
+                const SizedBox(height: 20),
+
+                buildLabel('Otros establecimientos (opcional)'),
+                establecimientosAsync.when(
+                  data: (lista) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: lista
+                        .where((e) => e.id != idEstablecimiento)
+                        .map(
+                          (e) => CheckboxListTile(
+                            title: Text(e.nombre, style: TextStyle(color: darkBlue)),
                             value: otrosEstablecimientos.contains(e.id),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: primaryGreen,
                             onChanged: (val) {
                               setState(() {
                                 if (val == true) {
@@ -157,53 +265,98 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                                 }
                               });
                             },
-                          ))
-                      .toList(),
-                ],
-              ),
-              loading: () => const SizedBox.shrink(),
-              error: (e, st) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  final usuario = Usuario(
-                    id: widget.usuarioEditar?.id ?? '',
-                    ci: ciController.text.trim(),
-                    nombreCompleto: nombreController.text.trim(),
-                    celular: celularController.text.trim(),
-                    genero: genero!,
-                    avatar: '', // Avatar asignado automáticamente (si aplica)
-                    idRol: idRol!,
-                    idEstablecimiento: idEstablecimiento!,
-                    idSubestablecimiento: idSubestablecimiento,
-                    otrosEstablecimientos: otrosEstablecimientos,
-                  );
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                ),
 
-                  final notifier = ref.read(usuariosProvider.notifier);
-                  if (widget.usuarioEditar == null) {
-                    await notifier.agregarUsuario(usuario);
-                  } else {
-                    await notifier.actualizarUsuario(usuario);
-                  }
+                const SizedBox(height: 30),
 
-                  if (context.mounted) Navigator.pop(context);
-                }
-              },
-              child: const Text('Guardar'),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final notifier = ref.read(usuariosProvider.notifier);
+
+                      final usuario = Usuario(
+                        id: widget.usuarioEditar?.id ?? '',
+                        ci: ciController.text.trim(),
+                        nombreCompleto: nombreController.text.trim(),
+                        celular: celularController.text.trim(),
+                        genero: genero!,
+                        avatar: '',
+                        idRol: idRol!,
+                        idEstablecimiento: idEstablecimiento!,
+                        idSubestablecimiento: idSubestablecimiento,
+                        otrosEstablecimientos: otrosEstablecimientos,
+                        email: emailController.text.trim(),
+                      );
+
+                      if (widget.usuarioEditar == null) {
+                        // Crear usuario nuevo
+                        try {
+                          final res = await supabase.auth.signUp(
+                            email: emailController.text.trim(),
+                            password: passwordController.text.trim(),
+                            emailRedirectTo: 'https://confirmacion-app.netlify.app/',
+                          );
+
+                          final userId = res.user?.id;
+                          if (userId == null) throw Exception('No se pudo registrar en Supabase Auth');
+
+                          final nuevoUsuario = usuario.copyWith(id: userId);
+                          await notifier.agregarUsuario(nuevoUsuario);
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error creando usuario: $e')),
+                          );
+                        }
+                      } else {
+                        // Actualizar usuario existente
+                        await notifier.actualizarUsuario(usuario);
+
+                        final email = emailController.text.trim();
+                        final password = passwordController.text.trim();
+
+                        try {
+                          if (email.isNotEmpty) {
+                            await supabase.auth.admin.updateUserById(
+                              widget.usuarioEditar!.id,
+                              attributes: AdminUserAttributes(email: email),
+                            );
+                          }
+                          if (password.isNotEmpty) {
+                            await supabase.auth.admin.updateUserById(
+                              widget.usuarioEditar!.id,
+                              attributes: AdminUserAttributes(password: password),
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error actualizando email/contraseña: $e')),
+                          );
+                        }
+
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    ciController.dispose();
-    nombreController.dispose();
-    celularController.dispose();
-    super.dispose();
   }
 }

@@ -5,12 +5,7 @@ import '../models/cotizacion_salon.dart';
 class CotizacionSalonNotifier extends StateNotifier<List<ItemSalon>> {
   CotizacionSalonNotifier() : super([]);
 
-  void agregarSalon(
-    ItemSalon salon, {
-    String? idCotizacion,
-    String? idEstablecimiento,
-  }) {
-    // Aquí puedes usar idCotizacion e idEstablecimiento si quieres (por ejemplo para backend)
+  void agregarSalon(ItemSalon salon) {
     state = [...state, salon];
   }
 

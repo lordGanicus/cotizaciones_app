@@ -8,18 +8,31 @@ import 'salon_form.dart';
 class SalonesScreen extends ConsumerWidget {
   const SalonesScreen({super.key});
 
+  final Color _azulOscuro = const Color(0xFF2D4059);
+  final Color _verdeMenta = const Color(0xFF00B894);
+  final Color _fondoClaro = const Color(0xFFFAFAFA);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final salonesAsync = ref.watch(salonesProvider);
 
     return Scaffold(
+      backgroundColor: _fondoClaro,
       appBar: AppBar(
+        backgroundColor: _azulOscuro,
         title: const Text('Salones'),
+        centerTitle: true,
+        elevation: 4,
       ),
       body: salonesAsync.when(
         data: (salones) {
           if (salones.isEmpty) {
-            return const Center(child: Text('No hay salones registrados.'));
+            return Center(
+              child: Text(
+                'No hay salones registrados.',
+                style: TextStyle(color: _azulOscuro, fontSize: 16),
+              ),
+            );
           }
 
           return ListView.separated(
@@ -32,31 +45,45 @@ class SalonesScreen extends ConsumerWidget {
                 elevation: 3,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  title: Text(salon.nombre),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  title: Text(
+                    salon.nombre,
+                    style: TextStyle(
+                      color: _azulOscuro,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
                   subtitle: Text(
                     'Mesas: ${salon.capacidadMesas}, Sillas: ${salon.capacidadSillas}',
+                    style: TextStyle(color: _azulOscuro.withOpacity(0.7)),
                   ),
                   trailing: PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: _azulOscuro),
                     onSelected: (value) async {
                       if (value == 'editar') {
                         await showDialog(
                           context: context,
-                          builder: (_) => SalonForm(
-                            salon: salon,
-                          ),
+                          builder: (_) => SalonForm(salon: salon),
                         );
                       } else if (value == 'eliminar') {
                         final confirmar = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('¿Eliminar salón?'),
+                            title: Text(
+                              '¿Eliminar salón?',
+                              style: TextStyle(color: _azulOscuro),
+                            ),
                             content: const Text('Esta acción no se puede deshacer.'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar'),
+                                child: Text('Cancelar', style: TextStyle(color: _azulOscuro)),
                               ),
                               ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _verdeMenta,
+                                ),
                                 onPressed: () => Navigator.pop(context, true),
                                 child: const Text('Eliminar'),
                               ),
@@ -66,6 +93,12 @@ class SalonesScreen extends ConsumerWidget {
 
                         if (confirmar == true) {
                           await ref.read(salonesProvider.notifier).eliminarSalon(salon.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Salón eliminado'),
+                              backgroundColor: _verdeMenta,
+                            ),
+                          );
                         }
                       }
                     },
@@ -80,9 +113,15 @@ class SalonesScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) => Center(
+          child: Text(
+            'Error: $error',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _verdeMenta,
         onPressed: () {
           showDialog(
             context: context,

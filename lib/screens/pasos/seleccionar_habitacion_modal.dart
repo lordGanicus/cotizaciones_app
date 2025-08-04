@@ -136,98 +136,130 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final borderRadius = BorderRadius.circular(12);
 
     return AlertDialog(
-      title: const Text('Agregar habitación a la cotización'),
-      content: isLoading
-          ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
-          : error != null
-              ? Text(error!)
-              : SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        value: habitacionSeleccionadaId,
-                        decoration: InputDecoration(
-                          labelText: 'Tipo de habitación',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        items: habitaciones
-                            .map((h) => DropdownMenuItem<String>(
-                                  value: h['id'],
-                                  child: Text(h['nombre']),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => habitacionSeleccionadaId = v),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                labelText: 'Cantidad',
-                                border: OutlineInputBorder(),
-                              ),
-                              keyboardType: TextInputType.number,
-                              onChanged: (v) {
-                                final val = int.tryParse(v);
-                                if (val != null && val > 0) {
-                                  setState(() => cantidad = val);
-                                }
-                              },
-                              controller: TextEditingController(text: cantidad.toString()),
+      shape: RoundedRectangleBorder(borderRadius: borderRadius),
+      title: const Text('Agregar habitación a la cotización', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: isLoading
+            ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
+            : error != null
+                ? Text(error!, style: const TextStyle(color: Colors.red))
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: habitacionSeleccionadaId,
+                          decoration: InputDecoration(
+                            labelText: 'Tipo de habitación',
+                            border: OutlineInputBorder(borderRadius: borderRadius),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: borderRadius,
+                              borderSide: BorderSide(color: primaryColor, width: 2),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                labelText: 'Tarifa (Bs por noche)',
-                                border: OutlineInputBorder(),
+                          items: habitaciones
+                              .map((h) => DropdownMenuItem<String>(
+                                    value: h['id'],
+                                    child: Text(h['nombre']),
+                                  ))
+                              .toList(),
+                          onChanged: (v) => setState(() => habitacionSeleccionadaId = v),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  labelText: 'Cantidad',
+                                  border: OutlineInputBorder(borderRadius: borderRadius),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: borderRadius,
+                                    borderSide: BorderSide(color: primaryColor, width: 2),
+                                  ),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (v) {
+                                  final val = int.tryParse(v);
+                                  if (val != null && val > 0) {
+                                    setState(() => cantidad = val);
+                                  }
+                                },
+                                controller: TextEditingController(text: cantidad.toString()),
                               ),
-                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                              onChanged: (v) {
-                                final val = double.tryParse(v);
-                                if (val != null && val > 0) {
-                                  setState(() => tarifa = val);
-                                }
-                              },
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  labelText: 'Tarifa (Bs por noche)',
+                                  border: OutlineInputBorder(borderRadius: borderRadius),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: borderRadius,
+                                    borderSide: BorderSide(color: primaryColor, width: 2),
+                                  ),
+                                ),
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: (v) {
+                                  final val = double.tryParse(v);
+                                  if (val != null && val > 0) {
+                                    setState(() => tarifa = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        ListTile(
+                          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+                          tileColor: Colors.grey[100],
+                          title: Text(
+                            fechaIngreso != null
+                                ? DateFormat('dd/MM/yyyy').format(fechaIngreso!)
+                                : 'Fecha de ingreso',
+                            style: TextStyle(
+                              color: fechaIngreso != null ? Colors.black87 : Colors.grey[600],
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ListTile(
-                        title: Text(fechaIngreso != null
-                            ? DateFormat('dd/MM/yyyy').format(fechaIngreso!)
-                            : 'Fecha de ingreso'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.calendar_today),
-                          onPressed: _seleccionarFechaIngreso,
-                        ),
-                      ),
-                      ListTile(
-                        title: Text(fechaSalida != null
-                            ? DateFormat('dd/MM/yyyy').format(fechaSalida!)
-                            : 'Fecha de salida'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.calendar_today),
-                          onPressed: fechaIngreso == null ? null : _seleccionarFechaSalida,
-                        ),
-                      ),
-                      if (cantidadNoches > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Cantidad de noches: $cantidadNoches',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          trailing: IconButton(
+                            icon: Icon(Icons.calendar_today, color: primaryColor),
+                            onPressed: _seleccionarFechaIngreso,
                           ),
                         ),
-                    ],
+                        const SizedBox(height: 8),
+                        ListTile(
+                          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+                          tileColor: Colors.grey[100],
+                          title: Text(
+                            fechaSalida != null
+                                ? DateFormat('dd/MM/yyyy').format(fechaSalida!)
+                                : 'Fecha de salida',
+                            style: TextStyle(
+                              color: fechaSalida != null ? Colors.black87 : Colors.grey[600],
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(Icons.calendar_today, color: primaryColor),
+                            onPressed: fechaIngreso == null ? null : _seleccionarFechaSalida,
+                          ),
+                        ),
+                        if (cantidadNoches > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              'Cantidad de noches: $cantidadNoches',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -235,8 +267,13 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
         ),
         ElevatedButton(
           onPressed: _agregarHabitacion,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           child: const Text('Agregar'),
-          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
         ),
       ],
     );

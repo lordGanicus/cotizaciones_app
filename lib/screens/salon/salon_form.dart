@@ -2,20 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/salon.dart';
-import '../../models/servicio_incluido.dart';
-// import '../../models/refrigerio.dart'; // eliminado import innecesario
 import '../../providers/salones_provider.dart';
-import '../../providers/servicios_provider.dart';
-// import '../../providers/refrigerios_provider.dart'; // eliminado import innecesario
-import '../../providers/establecimiento_provider.dart'; // Provider que da lista de establecimientos
+// para establecimientos y subestablecimientos
+import '../../providers/pestablecimiento.dart';
 
 class SalonForm extends ConsumerStatefulWidget {
   final Salon? salon;
 
-  const SalonForm({
-    super.key,
-    this.salon,
-  });
+  const SalonForm({super.key, this.salon});
 
   @override
   ConsumerState<SalonForm> createState() => _SalonFormState();
@@ -29,12 +23,15 @@ class _SalonFormState extends ConsumerState<SalonForm> {
   late TextEditingController _capSillasController;
   late TextEditingController _descripcionController;
 
-  Set<String> _serviciosSeleccionados = {};
-  // Set<String> _refrigeriosSeleccionados = {}; // eliminado
-
   String? _idEstablecimientoSeleccionado;
+  String? _idSubestablecimientoSeleccionado;
 
   bool _isLoading = false;
+
+  // Colores base
+  final Color _azulOscuro = const Color(0xFF2D4059);
+  final Color _verdeMenta = const Color(0xFF00B894);
+  final Color _fondoClaro = const Color(0xFFFAFAFA);
 
   @override
   void initState() {
@@ -46,10 +43,9 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     _capSillasController = TextEditingController(text: salon?.capacidadSillas.toString() ?? '');
     _descripcionController = TextEditingController(text: salon?.descripcion ?? '');
 
-    _serviciosSeleccionados = salon?.servicios.map((s) => s.id).toSet() ?? {};
-    // _refrigeriosSeleccionados = salon?.refrigerios.map((r) => r.id).toSet() ?? {}; // eliminado
-
-    _idEstablecimientoSeleccionado = salon?.idEstablecimiento;
+    _idSubestablecimientoSeleccionado = salon?.idSubestablecimiento;
+    // TODO: Si editando, se podría cargar aquí el idEstablecimiento asociado al subestablecimiento seleccionado
+    _idEstablecimientoSeleccionado = null;
   }
 
   @override
@@ -61,59 +57,15 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     super.dispose();
   }
 
-  Future<void> _seleccionarServicios() async {
-    final servicios = ref.read(serviciosProvider).value ?? [];
-    final seleccionados = await showDialog<Set<String>>(
-      context: context,
-      builder: (_) => _SeleccionDialog<ServicioIncluido>(
-        titulo: 'Seleccionar servicios incluidos',
-        elementos: servicios,
-        seleccionInicial: _serviciosSeleccionados,
-        labelBuilder: (s) => s.nombre,
-        descripcionBuilder: (s) => s.descripcion,
-        idBuilder: (s) => s.id,
-      ),
-    );
-
-    if (seleccionados != null) {
-      setState(() {
-        _serviciosSeleccionados = seleccionados;
-      });
-    }
+  bool get _formValido {
+    return _formKey.currentState?.validate() == true &&
+        _idEstablecimientoSeleccionado != null &&
+        _idSubestablecimientoSeleccionado != null &&
+        !_isLoading;
   }
-
-  /*
-  Future<void> _seleccionarRefrigerios() async {
-    final refrigerios = ref.read(refrigeriosProvider).value ?? [];
-    final seleccionados = await showDialog<Set<String>>(
-      context: context,
-      builder: (_) => _SeleccionDialog<Refrigerio>(
-        titulo: 'Seleccionar refrigerios',
-        elementos: refrigerios,
-        seleccionInicial: _refrigeriosSeleccionados,
-        labelBuilder: (r) => r.nombre,
-        descripcionBuilder: (r) => r.descripcion,
-        idBuilder: (r) => r.id,
-      ),
-    );
-
-    if (seleccionados != null) {
-      setState(() {
-        _refrigeriosSeleccionados = seleccionados;
-      });
-    }
-  }
-  */ // eliminado método refrigerios
 
   Future<void> _guardar() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_idEstablecimientoSeleccionado == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debe seleccionar un establecimiento')),
-      );
-      return;
-    }
+    if (!_formValido) return;
 
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
@@ -126,25 +78,21 @@ class _SalonFormState extends ConsumerState<SalonForm> {
     try {
       if (widget.salon == null) {
         await ref.read(salonesProvider.notifier).agregarSalon(
-          nombre,
-          capacidadMesas,
-          capacidadSillas,
-          descripcion.isEmpty ? null : descripcion,
-          _serviciosSeleccionados.toList(),
-          // _refrigeriosSeleccionados.toList(), // eliminado
-          _idEstablecimientoSeleccionado!,
-        );
+              nombre,
+              capacidadMesas,
+              capacidadSillas,
+              descripcion.isEmpty ? null : descripcion,
+              _idSubestablecimientoSeleccionado!,
+            );
       } else {
         await ref.read(salonesProvider.notifier).editarSalon(
-          widget.salon!.id,
-          nombre,
-          capacidadMesas,
-          capacidadSillas,
-          descripcion.isEmpty ? null : descripcion,
-          _serviciosSeleccionados.toList(),
-          // _refrigeriosSeleccionados.toList(), // eliminado
-          _idEstablecimientoSeleccionado!,
-        );
+              widget.salon!.id,
+              nombre,
+              capacidadMesas,
+              capacidadSillas,
+              descripcion.isEmpty ? null : descripcion,
+              _idSubestablecimientoSeleccionado!,
+            );
       }
 
       if (mounted) Navigator.pop(context);
@@ -160,39 +108,129 @@ class _SalonFormState extends ConsumerState<SalonForm> {
   Widget build(BuildContext context) {
     final establecimientosAsync = ref.watch(establecimientosProvider);
 
+    final subestablecimientosAsync = _idEstablecimientoSeleccionado == null
+        ? const AsyncValue.data([])
+        : ref.watch(subestablecimientosProvider(_idEstablecimientoSeleccionado!));
+
     return AbsorbPointer(
       absorbing: _isLoading,
       child: AlertDialog(
-        title: Text(widget.salon == null ? 'Agregar Salón' : 'Editar Salón'),
+        backgroundColor: _fondoClaro,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          widget.salon == null ? 'Agregar Salón' : 'Editar Salón',
+          style: TextStyle(
+            color: _azulOscuro,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         content: establecimientosAsync.when(
           data: (establecimientos) => SingleChildScrollView(
             child: Form(
               key: _formKey,
+              onChanged: () => setState(() {}), // Para actualizar _formValido al cambiar
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Establecimiento'),
-                    items: establecimientos.map((e) => DropdownMenuItem(
-                      value: e.id,
-                      child: Text(e.nombre),
-                    )).toList(),
-                    value: _idEstablecimientoSeleccionado,
-                    onChanged: (value) => setState(() => _idEstablecimientoSeleccionado = value),
-                    validator: (value) => value == null ? 'Seleccione un establecimiento' : null,
+                  // Contenedor con constraints para evitar overflow
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Establecimiento',
+                        labelStyle: TextStyle(color: _azulOscuro),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      items: establecimientos
+                          .map((e) => DropdownMenuItem<String>(
+                                value: e.id,
+                                child: Text(e.nombre, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      value: _idEstablecimientoSeleccionado,
+                      hint: const Text('Seleccione un establecimiento'),
+                      onChanged: (value) {
+                        setState(() {
+                          _idEstablecimientoSeleccionado = value;
+                          _idSubestablecimientoSeleccionado = null;
+                        });
+                      },
+                      validator: (value) =>
+                          value == null ? 'Seleccione un establecimiento' : null,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 16),
+
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: subestablecimientosAsync.when(
+                      data: (subs) => DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Subestablecimiento',
+                          labelStyle: TextStyle(color: _azulOscuro),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        items: subs
+                            .map<DropdownMenuItem<String>>((e) => DropdownMenuItem<String>(
+                                  value: e.id,
+                                  child: Text(e.nombre, overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        value: _idSubestablecimientoSeleccionado,
+                        hint: const Text('Seleccione un subestablecimiento'),
+                        onChanged: (value) =>
+                            setState(() => _idSubestablecimientoSeleccionado = value),
+                        validator: (value) =>
+                            value == null ? 'Seleccione un subestablecimiento' : null,
+                      ),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'Error al cargar subestablecimientos: $e',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
 
                   TextFormField(
                     controller: _nombreController,
-                    decoration: const InputDecoration(labelText: 'Nombre del salón'),
-                    validator: (value) => (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre del salón',
+                      labelStyle: TextStyle(color: _azulOscuro),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    validator: (value) =>
+                        (value == null || value.isEmpty) ? 'Ingrese un nombre' : null,
                   ),
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 16),
 
                   TextFormField(
                     controller: _capMesasController,
-                    decoration: const InputDecoration(labelText: 'Capacidad de mesas'),
+                    decoration: InputDecoration(
+                      labelText: 'Capacidad de mesas',
+                      labelStyle: TextStyle(color: _azulOscuro),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       final num = int.tryParse(value ?? '');
@@ -200,11 +238,18 @@ class _SalonFormState extends ConsumerState<SalonForm> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 16),
 
                   TextFormField(
                     controller: _capSillasController,
-                    decoration: const InputDecoration(labelText: 'Capacidad de sillas'),
+                    decoration: InputDecoration(
+                      labelText: 'Capacidad de sillas',
+                      labelStyle: TextStyle(color: _azulOscuro),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       final num = int.tryParse(value ?? '');
@@ -212,143 +257,57 @@ class _SalonFormState extends ConsumerState<SalonForm> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 16),
 
                   TextFormField(
                     controller: _descripcionController,
-                    decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
+                    decoration: InputDecoration(
+                      labelText: 'Descripción (opcional)',
+                      labelStyle: TextStyle(color: _azulOscuro),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                     maxLines: 2,
                   ),
-                  const SizedBox(height: 20),
-
-                  ElevatedButton.icon(
-                    onPressed: _seleccionarServicios,
-                    icon: const Icon(Icons.miscellaneous_services),
-                    label: const Text('Seleccionar servicios incluidos'),
-                  ),
-                  Text('${_serviciosSeleccionados.length} seleccionados'),
-
-                  /*
-                  const SizedBox(height: 12),
-
-                  ElevatedButton.icon(
-                    onPressed: _seleccionarRefrigerios,
-                    icon: const Icon(Icons.fastfood),
-                    label: const Text('Seleccionar refrigerios'),
-                  ),
-                  Text('${_refrigeriosSeleccionados.length} seleccionados'),
-                  */
                 ],
               ),
             ),
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error al cargar establecimientos: $e')),
+          loading: () => const SizedBox(
+            height: 120,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => Text(
+            'Error al cargar establecimientos: $e',
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: _isLoading ? null : () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar', style: TextStyle(color: _azulOscuro)),
           ),
           ElevatedButton(
-            onPressed: _isLoading ? null : _guardar,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _verdeMenta,
+              disabledBackgroundColor: _verdeMenta.withOpacity(0.5),
+            ),
+            onPressed: _formValido ? _guardar : null,
             child: _isLoading
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Guardar'),
           ),
         ],
       ),
-    );
-  }
-}
-
-// Diálogo genérico para selección con filtro
-class _SeleccionDialog<T> extends StatefulWidget {
-  final String titulo;
-  final List<T> elementos;
-  final Set<String> seleccionInicial;
-  final String Function(T) labelBuilder;
-  final String Function(T) descripcionBuilder;
-  final String Function(T) idBuilder;
-
-  const _SeleccionDialog({
-    required this.titulo,
-    required this.elementos,
-    required this.seleccionInicial,
-    required this.labelBuilder,
-    required this.descripcionBuilder,
-    required this.idBuilder,
-  });
-
-  @override
-  State<_SeleccionDialog<T>> createState() => _SeleccionDialogState<T>();
-}
-
-class _SeleccionDialogState<T> extends State<_SeleccionDialog<T>> {
-  late Set<String> seleccion;
-  String _filtro = '';
-
-  @override
-  void initState() {
-    super.initState();
-    seleccion = {...widget.seleccionInicial};
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final elementosFiltrados = widget.elementos.where((e) {
-      final texto = (widget.labelBuilder(e) + widget.descripcionBuilder(e)).toLowerCase();
-      return texto.contains(_filtro.toLowerCase());
-    }).toList();
-
-    return AlertDialog(
-      title: Text(widget.titulo),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: const InputDecoration(
-                labelText: 'Buscar...',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (value) => setState(() => _filtro = value),
-            ),
-            const SizedBox(height: 12),
-            ...elementosFiltrados.map((e) {
-              final id = widget.idBuilder(e);
-              return CheckboxListTile(
-                title: Text(widget.labelBuilder(e)),
-                subtitle: Text(widget.descripcionBuilder(e)),
-                value: seleccion.contains(id),
-                onChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      seleccion.add(id);
-                    } else {
-                      seleccion.remove(id);
-                    }
-                  });
-                },
-              );
-            }),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, seleccion),
-          child: const Text('Aceptar'),
-        ),
-      ],
     );
   }
 }

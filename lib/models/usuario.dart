@@ -9,7 +9,8 @@ class Usuario {
   final String? rolNombre;
   final String? idEstablecimiento;
   final String? establecimientoNombre;
-  final String? idSubestablecimiento; // <-- NUEVO
+  final String? idSubestablecimiento;
+  final String email;
   final List<String> otrosEstablecimientos;
 
   Usuario({
@@ -20,10 +21,11 @@ class Usuario {
     required this.genero,
     required this.avatar,
     required this.idRol,
+    required this.email,
     this.rolNombre,
     this.idEstablecimiento,
     this.establecimientoNombre,
-    this.idSubestablecimiento, // <-- NUEVO
+    this.idSubestablecimiento,
     this.otrosEstablecimientos = const [],
   });
 
@@ -39,7 +41,8 @@ class Usuario {
       rolNombre: map['rol_nombre'],
       idEstablecimiento: map['id_establecimiento'],
       establecimientoNombre: map['establecimiento_nombre'],
-      idSubestablecimiento: map['id_subestablecimiento'], // <-- NUEVO
+      idSubestablecimiento: map['id_subestablecimiento'],
+      email: map['email'] ?? '',
       otrosEstablecimientos: (map['otros_establecimientos'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -57,7 +60,37 @@ class Usuario {
       'avatar': avatar,
       'id_rol': idRol,
       'id_establecimiento': idEstablecimiento,
-      'id_subestablecimiento': idSubestablecimiento, // <-- NUEVO
+      'id_subestablecimiento': idSubestablecimiento,
+      'email': email,
+      'otros_establecimientos': otrosEstablecimientos,
     };
+  }
+
+  Usuario copyWith({
+    String? id,
+    String? ci,
+    String? nombreCompleto,
+    String? celular,
+    String? genero,
+    String? avatar,
+    String? idRol,
+    String? email,
+    String? idEstablecimiento,
+    String? idSubestablecimiento,
+    List<String>? otrosEstablecimientos,
+  }) {
+    return Usuario(
+      id: id ?? this.id,
+      ci: ci ?? this.ci,
+      nombreCompleto: nombreCompleto ?? this.nombreCompleto,
+      celular: celular ?? this.celular,
+      genero: genero ?? this.genero,
+      avatar: avatar ?? this.avatar,
+      idRol: idRol ?? this.idRol,
+      email: email ?? this.email,
+      idEstablecimiento: idEstablecimiento ?? this.idEstablecimiento,
+      idSubestablecimiento: idSubestablecimiento ?? this.idSubestablecimiento,
+      otrosEstablecimientos: otrosEstablecimientos ?? this.otrosEstablecimientos,
+    );
   }
 }

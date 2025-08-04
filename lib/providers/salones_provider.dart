@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/salon.dart';
-import '../models/servicio_incluido.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -19,29 +18,12 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     try {
       final response = await supabase
           .from('salones')
-          .select('''
-            *,
-            salon_servicios_incluidos (
-              servicio_id,
-              servicios_incluidos (
-                id,
-                nombre_servicio,
-                descripcion,
-                created_at
-              )
-            )
-          ''')
+          .select()
           .order('created_at', ascending: false);
 
-      final lista = (response as List).map<Salon>((row) {
-        final servicios = (row['salon_servicios_incluidos'] as List)
-            .map((rel) => rel['servicios_incluidos'])
-            .where((s) => s != null)
-            .map((s) => ServicioIncluido.fromMap(s))
-            .toList();
-
-        return Salon.fromMap(row, servicios);
-      }).toList();
+      final lista = (response as List)
+          .map((map) => Salon.fromMap(map as Map<String, dynamic>))
+          .toList();
 
       state = AsyncData(lista);
       return lista;
@@ -56,26 +38,16 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     int capacidadMesas,
     int capacidadSillas,
     String? descripcion,
-    List<String> serviciosIds,
-    String idEstablecimiento,
+    String idSubestablecimiento,
   ) async {
     try {
-      final response = await supabase.from('salones').insert({
+      await supabase.from('salones').insert({
         'nombre_salon': nombre,
         'capacidad_mesas': capacidadMesas,
         'capacidad_sillas': capacidadSillas,
         'descripcion': descripcion,
-        'id_establecimiento': idEstablecimiento,
-      }).select().single();
-
-      final salonId = response['id'] as String;
-
-      for (final sid in serviciosIds) {
-        await supabase.from('salon_servicios_incluidos').insert({
-          'salon_id': salonId,
-          'servicio_id': sid,
-        });
-      }
+        'id_subestablecimiento': idSubestablecimiento,
+      });
 
       await cargarSalones();
     } catch (e, st) {
@@ -90,8 +62,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
     int capacidadMesas,
     int capacidadSillas,
     String? descripcion,
-    List<String> serviciosIds,
-    String idEstablecimiento,
+    String idSubestablecimiento,
   ) async {
     try {
       await supabase.from('salones').update({
@@ -99,16 +70,8 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
         'capacidad_mesas': capacidadMesas,
         'capacidad_sillas': capacidadSillas,
         'descripcion': descripcion,
-        'id_establecimiento': idEstablecimiento,
+        'id_subestablecimiento': idSubestablecimiento,
       }).eq('id', id);
-
-      await supabase.from('salon_servicios_incluidos').delete().eq('salon_id', id);
-      for (final sid in serviciosIds) {
-        await supabase.from('salon_servicios_incluidos').insert({
-          'salon_id': id,
-          'servicio_id': sid,
-        });
-      }
 
       await cargarSalones();
     } catch (e, st) {
@@ -129,7 +92,42 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
   }
 }
 
-final salonesPorEstablecimientoProvider = FutureProvider.family<List<Salon>, String>((ref, idEstablecimiento) async {
-  final todos = await ref.read(salonesProvider.notifier).cargarSalones();
-  return todos.where((s) => s.idEstablecimiento == idEstablecimiento).toList();
+// ✅ Filtro por subestablecimiento (actualizado: directo desde Supabase)
+final salonesPorSubestablecimientoProvider =
+    FutureProvider.family<List<Salon>, String>((ref, idSubestablecimiento) async {
+  final response = await supabase
+      .from('salones')
+      .select()
+      .eq('id_subestablecimiento', idSubestablecimiento)
+      .order('created_at', ascending: false);
+
+  final lista = (response as List)
+      .map((e) => Salon.fromMap(e as Map<String, dynamic>))
+      .toList();
+
+  return lista;
+});
+
+// ✅ Obtener IDs de subestablecimientos por establecimiento
+final subestablecimientosPorEstablecimientoProvider =
+    FutureProvider.family<List<String>, String>((ref, idEstablecimiento) async {
+  final response = await supabase
+      .from('subestablecimientos')
+      .select('id')
+      .eq('id_establecimiento', idEstablecimiento);
+
+  final ids = (response as List).map((e) => e['id'] as String).toList();
+  return ids;
+});
+
+// ✅ Filtro por establecimiento (requiere tener relación subestablecimiento - establecimiento)
+final salonesPorEstablecimientoProvider =
+    FutureProvider.family<List<Salon>, String>((ref, idEstablecimiento) async {
+  final idsSubestablecimientos = await ref
+      .watch(subestablecimientosPorEstablecimientoProvider(idEstablecimiento).future);
+  final todosSalones = await ref.read(salonesProvider.notifier).cargarSalones();
+
+  return todosSalones
+      .where((s) => idsSubestablecimientos.contains(s.idSubestablecimiento))
+      .toList();
 });

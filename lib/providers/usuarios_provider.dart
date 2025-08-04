@@ -35,7 +35,7 @@ class UsuariosNotifier extends StateNotifier<List<Usuario>> {
       lista.add(Usuario.fromMap({
         ...item,
         'otros_establecimientos': otrosEstabs,
-        'id_subestablecimiento': item['id_subestablecimiento'], // aseguramos este campo
+        'id_subestablecimiento': item['id_subestablecimiento'],
       }));
     }
 
@@ -46,6 +46,7 @@ class UsuariosNotifier extends StateNotifier<List<Usuario>> {
     final avatar = _asignarAvatarSegunGenero(usuario.genero);
 
     final res = await supabase.from('usuarios').insert({
+      'id': usuario.id, // asegurarte que venga el id de Supabase Auth
       'ci': usuario.ci,
       'nombre_completo': usuario.nombreCompleto,
       'celular': usuario.celular,
@@ -54,6 +55,7 @@ class UsuariosNotifier extends StateNotifier<List<Usuario>> {
       'id_rol': usuario.idRol,
       'id_establecimiento': usuario.idEstablecimiento,
       'id_subestablecimiento': usuario.idSubestablecimiento,
+      // NO incluir 'email' aquí
     }).select().single();
 
     final idUsuarioNuevo = res['id'] as String;
@@ -81,6 +83,7 @@ class UsuariosNotifier extends StateNotifier<List<Usuario>> {
       'id_rol': usuario.idRol,
       'id_establecimiento': usuario.idEstablecimiento,
       'id_subestablecimiento': usuario.idSubestablecimiento,
+      // NO incluir 'email' aquí
     }).eq('id', usuario.id);
 
     // Actualizar lista de otros establecimientos

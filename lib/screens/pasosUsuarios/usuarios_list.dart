@@ -7,83 +7,116 @@ import 'usuario_form.dart';
 class UsuarioListPage extends ConsumerWidget {
   const UsuarioListPage({super.key});
 
+  final Color primaryGreen = const Color(0xFF00B894);
+  final Color darkBlue = const Color(0xFF2D4059);
+  final Color lightBackground = const Color(0xFFFAFAFA);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Obtenemos la lista de usuarios (List<Usuario>) directamente del StateNotifierProvider
     final usuarios = ref.watch(usuariosProvider);
 
     return Scaffold(
+      backgroundColor: lightBackground,
       appBar: AppBar(
+        backgroundColor: darkBlue,
         title: const Text('Lista de Usuarios'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Recarga la lista llamando al método cargarUsuarios del notifier
               ref.read(usuariosProvider.notifier).cargarUsuarios();
             },
-          )
+            tooltip: 'Refrescar lista',
+          ),
         ],
       ),
       body: usuarios.isEmpty
-          ? const Center(child: Text('No hay usuarios registrados.'))
+          ? Center(
+              child: Text(
+                'No hay usuarios registrados.',
+                style: TextStyle(color: darkBlue, fontSize: 16),
+              ),
+            )
           : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               itemCount: usuarios.length,
-              separatorBuilder: (_, __) => const Divider(),
+              separatorBuilder: (_, __) => Divider(color: darkBlue.withOpacity(0.3)),
               itemBuilder: (context, index) {
                 final usuario = usuarios[index];
-                return ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(usuario.nombreCompleto),
-                  subtitle: Text('CI: ${usuario.ci}  |  Rol: ${usuario.idRol}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => UsuarioFormPage(usuarioEditar: usuario),
-                            ),
-                          );
-                        },
+                return Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: primaryGreen.withOpacity(0.1),
+                      child: Icon(Icons.person, color: primaryGreen),
+                    ),
+                    title: Text(
+                      usuario.nombreCompleto,
+                      style: TextStyle(
+                        color: darkBlue,
+                        fontWeight: FontWeight.w600,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          final confirmar = await showDialog<bool>(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Text('Eliminar usuario'),
-                              content: const Text('¿Estás seguro de que deseas eliminar este usuario?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Cancelar'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Eliminar'),
-                                ),
-                              ],
-                            ),
-                          );
+                    ),
+                    subtitle: Text(
+                      'CI: ${usuario.ci}  |  Rol: ${usuario.idRol}',
+                      style: TextStyle(color: darkBlue.withOpacity(0.7)),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.edit, color: primaryGreen),
+                          tooltip: 'Editar usuario',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UsuarioFormPage(usuarioEditar: usuario),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.redAccent),
+                          tooltip: 'Eliminar usuario',
+                          onPressed: () async {
+                            final confirmar = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Eliminar usuario'),
+                                content: const Text('¿Estás seguro de que deseas eliminar este usuario?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text(
+                                      'Eliminar',
+                                      style: TextStyle(color: Colors.redAccent),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
 
-                          if (confirmar == true) {
-                            await ref.read(usuariosProvider.notifier).eliminarUsuario(usuario.id);
-                            // Recarga la lista tras eliminar
-                            ref.read(usuariosProvider.notifier).cargarUsuarios();
-                          }
-                        },
-                      ),
-                    ],
+                            if (confirmar == true) {
+                              await ref.read(usuariosProvider.notifier).eliminarUsuario(usuario.id);
+                              ref.read(usuariosProvider.notifier).cargarUsuarios();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: primaryGreen,
         onPressed: () {
           Navigator.push(
             context,
@@ -92,7 +125,7 @@ class UsuarioListPage extends ConsumerWidget {
             ),
           );
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
         tooltip: 'Crear nuevo usuario',
       ),
     );

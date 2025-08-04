@@ -8,18 +8,25 @@ class CrearCotizacionHabitacionStep1 extends StatefulWidget {
   const CrearCotizacionHabitacionStep1({super.key, required this.idCotizacion});
 
   @override
-  State<CrearCotizacionHabitacionStep1> createState() => _CrearCotizacionHabitacionStep1State();
+  State<CrearCotizacionHabitacionStep1> createState() =>
+      _CrearCotizacionHabitacionStep1State();
 }
 
-class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitacionStep1> {
+class _CrearCotizacionHabitacionStep1State
+    extends State<CrearCotizacionHabitacionStep1> {
   final supabase = Supabase.instance.client;
 
-  final TextEditingController _nombreClienteController = TextEditingController();
+  final TextEditingController _nombreClienteController =
+      TextEditingController();
   final TextEditingController _ciClienteController = TextEditingController();
 
   String? nombreEstablecimiento;
   bool isLoading = true;
   String? error;
+
+  static const Color primaryGreen = Color(0xFF00B894);
+  static const Color darkBlue = Color(0xFF2D4059);
+  static const Color lightBackground = Color(0xFFFAFAFA);
 
   @override
   void initState() {
@@ -75,7 +82,6 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
     }
 
     try {
-      // Upsert cliente y devolver id
       final response = await supabase.from('clientes').upsert({
         'ci': ci.isEmpty ? null : ci,
         'nombre_completo': nombre,
@@ -83,12 +89,10 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
 
       final String idCliente = response['id'] as String;
 
-      // Actualizar cotización con id_cliente
       await supabase.from('cotizaciones').update({
         'id_cliente': idCliente,
       }).eq('id', widget.idCotizacion);
 
-      // Continuar al paso 2
       if (!mounted) return;
       Navigator.push(
         context,
@@ -109,13 +113,13 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
     return Scaffold(
+      backgroundColor: lightBackground,
       appBar: AppBar(
         title: const Text('Paso 1 - Datos del Cliente'),
-        backgroundColor: primaryColor,
+        backgroundColor: darkBlue,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -124,20 +128,35 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (nombreEstablecimiento != null)
                         Text(
                           'Hotel: $nombreEstablecimiento',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
                         ),
                       const SizedBox(height: 24),
+                      Text(
+                        'Información del Cliente',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: darkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _nombreClienteController,
                         decoration: InputDecoration(
                           labelText: 'Nombre del cliente',
                           border: OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.person_outline),
+                          fillColor: Colors.white,
+                          filled: true,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -147,34 +166,46 @@ class _CrearCotizacionHabitacionStep1State extends State<CrearCotizacionHabitaci
                           labelText: 'CI / NIT (opcional)',
                           border: OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.badge_outlined),
+                          fillColor: Colors.white,
+                          filled: true,
                         ),
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 32),
-                      ElevatedButton.icon(
-                        onPressed: _guardarClienteYContinuar,
-                        icon: const Icon(Icons.navigate_next),
-                        label: const Text('Siguiente'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          textStyle: const TextStyle(fontSize: 16),
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _guardarClienteYContinuar,
+                          icon: const Icon(Icons.navigate_next),
+                          label: const Text('Siguiente'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            textStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(Icons.close),
-                        label: const Text('Cancelar'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          textStyle: const TextStyle(fontSize: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).maybePop(),
+                          icon: const Icon(Icons.close),
+                          label: const Text('Cancelar'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            textStyle: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(color: darkBlue),
+                            foregroundColor: darkBlue,
                           ),
                         ),
                       ),

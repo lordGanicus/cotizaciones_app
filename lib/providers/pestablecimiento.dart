@@ -233,4 +233,9 @@ class SubestablecimientosNotifier
   void limpiar() {
     state = const AsyncValue.data([]);
   }
+  final subestablecimientosProvider = AsyncNotifierProviderFamily<
+    SubestablecimientosNotifier, List<Subestablecimiento>, String>(
+  SubestablecimientosNotifier.new,
+);
+
 }

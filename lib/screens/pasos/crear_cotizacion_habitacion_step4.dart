@@ -18,6 +18,10 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
     required this.ciCliente,
   });
 
+  static const Color primaryGreen = Color(0xFF00B894);
+  static const Color darkBlue = Color(0xFF2D4059);
+  static const Color lightBackground = Color(0xFFFAFAFA);
+
   Future<void> _guardarEnSupabase(BuildContext context, WidgetRef ref) async {
     final supabase = Supabase.instance.client;
     final habitaciones = ref.read(cotizacionHabitacionProvider);
@@ -33,7 +37,6 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
       String? idCliente;
 
       if (ciCliente.isNotEmpty) {
-        // Buscar cliente por CI
         final clientes = await supabase
             .from('clientes')
             .select('id')
@@ -45,7 +48,6 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
         }
       }
 
-      // Si no encontró por CI o no hay CI, buscar por nombre
       if (idCliente == null) {
         final clientesPorNombre = await supabase
             .from('clientes')
@@ -58,18 +60,15 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
         }
       }
 
-      // Si no existe cliente, crear nuevo
       if (idCliente == null) {
         final insertRes = await supabase.from('clientes').insert({
           'nombre_completo': nombreCliente,
           if (ciCliente.isNotEmpty) 'ci': ciCliente,
-          // Agrega otros campos necesarios para el cliente aquí
         }).select('id').single();
 
         idCliente = insertRes['id'] as String;
       }
 
-      // Asociar cotización con cliente
       await supabase
           .from('cotizaciones')
           .update({'id_cliente': idCliente})
@@ -139,10 +138,12 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
     final habitaciones = ref.watch(cotizacionHabitacionProvider);
 
     return Scaffold(
+      backgroundColor: lightBackground,
       appBar: AppBar(
         title: const Text('Paso 4 - Confirmar habitaciones'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: darkBlue,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -150,7 +151,15 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
           children: [
             Expanded(
               child: habitaciones.isEmpty
-                  ? const Center(child: Text('No se agregaron habitaciones.'))
+                  ? Center(
+                      child: Text(
+                        'No se agregaron habitaciones.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: darkBlue.withOpacity(0.7),
+                        ),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: habitaciones.length,
                       itemBuilder: (context, index) {
@@ -159,22 +168,38 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
 
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
                           child: ListTile(
-                            title: Text(h.nombreHabitacion, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Cantidad: ${h.cantidad}'),
-                                Text('Ingreso: ${DateFormat('dd/MM/yyyy').format(h.fechaIngreso)}'),
-                                Text('Salida: ${DateFormat('dd/MM/yyyy').format(h.fechaSalida)}'),
-                                Text('Noches: ${h.cantidadNoches}'),
-                                Text('Tarifa: Bs ${h.tarifa.toStringAsFixed(2)}'),
-                              ],
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            title: Text(
+                              h.nombreHabitacion,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: darkBlue),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Cantidad: ${h.cantidad}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
+                                  Text('Ingreso: ${DateFormat('dd/MM/yyyy').format(h.fechaIngreso)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
+                                  Text('Salida: ${DateFormat('dd/MM/yyyy').format(h.fechaSalida)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
+                                  Text('Noches: ${h.cantidadNoches}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
+                                  Text('Tarifa: Bs ${h.tarifa.toStringAsFixed(2)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
+                                ],
+                              ),
                             ),
                             trailing: Text(
                               'Bs ${subtotal.toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: primaryGreen,
+                              ),
                             ),
                           ),
                         );
@@ -182,16 +207,20 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
                     ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => _guardarEnSupabase(context, ref),
-              icon: const Icon(Icons.save_alt),
-              label: const Text('Guardar cotización'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _guardarEnSupabase(context, ref),
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Guardar cotización'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  backgroundColor: primaryGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
           ],
