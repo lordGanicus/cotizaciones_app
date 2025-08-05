@@ -39,3 +39,4 @@ flutter:
     - .env
     - assets/imgLogin.png
     - assets/welcome.png
+    - assets/fonts/acterum-signature-font.ttf

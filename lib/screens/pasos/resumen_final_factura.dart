@@ -1,13 +1,9 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
-import 'package:pdf/pdf.dart';
+import 'generador_pdf_habitacion.dart';
 
 class ResumenFinalCotizacionHabitacionPage extends StatefulWidget {
   final String idCotizacion;
@@ -22,13 +18,27 @@ class ResumenFinalCotizacionHabitacionPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<ResumenFinalCotizacionHabitacionPage> createState() => _ResumenFinalCotizacionHabitacionPageState();
+  State<ResumenFinalCotizacionHabitacionPage> createState() =>
+      _ResumenFinalCotizacionHabitacionPageState();
 }
 
-class _ResumenFinalCotizacionHabitacionPageState extends State<ResumenFinalCotizacionHabitacionPage> {
+class _ResumenFinalCotizacionHabitacionPageState
+    extends State<ResumenFinalCotizacionHabitacionPage> {
+  // Colores del diseño
+  static const Color primaryGreen = Color(0xFF00B894);
+  static const Color darkBlue = Color(0xFF2D4059);
+  static const Color lightBackground = Color(0xFFFAFAFA);
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF2D4059);
+  static const Color textSecondary = Color(0xFF555555);
+  static const Color borderColor = Color(0xFFE0E0E0);
+  static const Color errorColor = Color(0xFFE74C3C);
+
   late final SupabaseClient supabase;
   String? nombreHotel;
   String? logoHotel;
+  String? membreteHotel;
+  String? nombreUsuario;
   Map<String, dynamic>? cotizacionData;
   List<Map<String, dynamic>> items = [];
   double totalFinal = 0;
@@ -54,21 +64,24 @@ class _ResumenFinalCotizacionHabitacionPageState extends State<ResumenFinalCotiz
 
       final usuarioResp = await supabase
           .from('usuarios')
-          .select('id_establecimiento')
+          .select('id_establecimiento, nombre_completo')
           .eq('id', user.id)
           .single();
 
       final idEstablecimiento = usuarioResp['id_establecimiento'];
+      nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
+
       if (idEstablecimiento == null) throw 'Establecimiento no encontrado';
 
       final establecimientoResp = await supabase
           .from('establecimientos')
-          .select('nombre, logotipo')
+          .select('nombre, logotipo, membrete')
           .eq('id', idEstablecimiento)
           .single();
 
       nombreHotel = establecimientoResp['nombre'] as String?;
       logoHotel = establecimientoResp['logotipo'] as String?;
+      membreteHotel = establecimientoResp['membrete'] as String?;
 
       final cotizacionResp = await supabase
           .from('cotizaciones')
@@ -88,9 +101,12 @@ class _ResumenFinalCotizacionHabitacionPageState extends State<ResumenFinalCotiz
       totalFinal = 0;
       for (var item in items) {
         final detalles = item['detalles'] ?? {};
-        final cantidad = item['cantidad'] ?? 0;
+        final cantidad = (item['cantidad'] ?? 0) as int;
         final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
-        final noches = detalles['cantidad_noches'] ?? 1;
+        final noches = (detalles['cantidad_noches'] ?? 1) is int
+            ? detalles['cantidad_noches']
+            : int.tryParse(detalles['cantidad_noches']?.toString() ?? '1') ?? 1;
+
         final subtotal = precioUnitario * cantidad * noches;
         totalFinal += subtotal;
       }
@@ -115,353 +131,478 @@ class _ResumenFinalCotizacionHabitacionPageState extends State<ResumenFinalCotiz
     }
   }
 
- Future<void> _generatePDF() async {
-  final pdf = pw.Document();
-
-  pw.MemoryImage? logoBytes;
-
-  // Cargar la imagen antes de crear el documento
-  if (logoHotel != null && logoHotel!.isNotEmpty) {
+  Future<void> _generatePDF() async {
     try {
-      final bytes = await _networkImageToBytes(logoHotel!);
-      logoBytes = pw.MemoryImage(bytes);
-    } catch (_) {
-      // Puedes manejar el error o dejar el logo como null
-      logoBytes = null;
-    }
-  }
+      final pdfBytes = await generarPdfCotizacionHabitacion(
+        nombreHotel: nombreHotel ?? 'Hotel',
+        membreteUrl: membreteHotel,
+        idCotizacion: widget.idCotizacion,
+        nombreCliente: widget.nombreCliente,
+        ciCliente: widget.ciCliente,
+        cotizacionData: cotizacionData,
+        items: items,
+        totalFinal: totalFinal,
+        nombreUsuario: nombreUsuario ?? 'Usuario',
+      );
 
-  pdf.addPage(
-    pw.Page(
-      pageFormat: PdfPageFormat.a4,
-      build: (pw.Context context) {
-        return pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            if (logoBytes != null)
-              pw.Center(
-                child: pw.Image(logoBytes, height: 80),
-              ),
-            pw.SizedBox(height: 12),
-            if (nombreHotel != null)
-              pw.Center(
-                child: pw.Text(
-                  nombreHotel!,
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-            pw.SizedBox(height: 24),
-            pw.Text('La Paz, ${DateFormat('dd/MM/yyyy').format(DateTime.now())}'),
-            pw.Text('COT N°: ${widget.idCotizacion}', 
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 16),
-            pw.Text('Señores:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.Text(widget.nombreCliente),
-            pw.Text('CI / NIT: ${widget.ciCliente}'),
-            pw.SizedBox(height: 24),
-            pw.Text('DETALLES DEL EVENTO', 
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 8),
-            pw.Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
-            pw.Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
-            pw.SizedBox(height: 16),
-            pw.Text('🧾 Detalles de la cotizacion:', 
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 8),
-            pw.Table(
-              border: pw.TableBorder.all(),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(3),
-                1: const pw.FlexColumnWidth(2),
-                2: const pw.FlexColumnWidth(2),
-                3: const pw.FlexColumnWidth(1.5),
-                4: const pw.FlexColumnWidth(1.5),
-                5: const pw.FlexColumnWidth(2),
-                6: const pw.FlexColumnWidth(2),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey300),
-                  children: [
-                    _cell('Habitación'),
-                    _cell('Ingreso'),
-                    _cell('Salida'),
-                    _cell('Cantidad'),
-                    _cell('Noches'),
-                    _cell('P. Unitario'),
-                    _cell('Subtotal'),
-                  ],
-                ),
-                ...items.map((item) {
-                  final detalles = item['detalles'] ?? {};
-                  final nombreHabitacion = detalles['nombre_habitacion'] ?? 'Sin nombre';
-                  final cantidad = detalles['cantidad'] ?? 0;
-                  final fechaIngreso = detalles['fecha_ingreso'] ?? '';
-                  final fechaSalida = detalles['fecha_salida'] ?? '';
-                  final noches = detalles['cantidad_noches'] ?? 0;
-                  final tarifa = (detalles['tarifa'] ?? 0).toDouble();
-                  final subtotal = (detalles['subtotal'] ?? 0).toDouble();
-
-                  return pw.TableRow(
-                    children: [
-                      _cell(nombreHabitacion.toString()),
-                      _cell(formatFecha(fechaIngreso)),
-                      _cell(formatFecha(fechaSalida)),
-                      _cell(cantidad.toString()),
-                      _cell(noches.toString()),
-                      _cell('Bs ${tarifa.toStringAsFixed(2)}'),
-                      _cell('Bs ${subtotal.toStringAsFixed(2)}'),
-                    ],
-                  );
-                }),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.end,
-              children: [
-                pw.Text('Total final: ', 
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(width: 10),
-                pw.Text('Bs ${totalFinal.toStringAsFixed(2)}', 
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.blue)),
-              ],
-            ),
-          ],
-        );
-      },
-    ),
-  );
-
-  // Mostrar el diálogo de impresión/guardado
-  await Printing.layoutPdf(
-    onLayout: (PdfPageFormat format) async => pdf.save(),
-  );
-}
-
-// Extra: función para reutilizar celdas con padding
-pw.Widget _cell(String text) {
-  return pw.Padding(
-    padding: const pw.EdgeInsets.all(8),
-    child: pw.Text(text, style: pw.TextStyle(fontSize: 10)),
-  );
-}
-
-  Future<Uint8List> _networkImageToBytes(String imageUrl) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      }
-      throw Exception('Failed to load image');
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdfBytes,
+      );
     } catch (e) {
-      throw Exception('Error loading image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar PDF: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
+      backgroundColor: lightBackground,
       appBar: AppBar(
-        title: Text(nombreHotel ?? 'Resumen Cotización'),
-        backgroundColor: primaryColor,
+        title: Text(
+          'Resumen de Cotización',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: darkBlue,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.print),
+            icon: const Icon(Icons.picture_as_pdf),
             onPressed: _generatePDF,
             tooltip: 'Generar PDF',
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cargando resumen...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : error != null
-              ? Center(child: Text(error!))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: errorColor,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          error!,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reintentar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Encabezado con logo y nombre del hotel
                       if (logoHotel != null && logoHotel!.isNotEmpty)
                         Center(
-                          child: Image.network(
-                            logoHotel!,
-                            height: 100,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 100),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: borderColor,
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Image.network(
+                              logoHotel!,
+                              height: 80,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.hotel,
+                                size: 60,
+                                color: darkBlue.withOpacity(0.5),
+                              ),
+                            ),
                           ),
                         ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
+
                       if (nombreHotel != null)
                         Center(
                           child: Text(
                             nombreHotel!,
-                            style: textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: darkBlue,
                             ),
                           ),
                         ),
                       const SizedBox(height: 24),
-                      Text('La Paz, ${DateFormat('dd/MM/yyyy').format(DateTime.now())}',
-                          style: textTheme.bodyLarge),
-                      const SizedBox(height: 4),
-                      Text('COT N°: ${widget.idCotizacion}', 
-                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      Text('Señores:', style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(widget.nombreCliente, style: textTheme.bodyLarge),
-                      Text('CI: ${widget.ciCliente}', style: textTheme.bodyLarge),
-                      const SizedBox(height: 24),
-                      Text('DETALLES DEL EVENTO', 
-                          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}',
-                          style: textTheme.bodyLarge),
-                      Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}',
-                          style: textTheme.bodyLarge),
-                      const SizedBox(height: 16),
-                      Text('🧾 Detalle de la propuesta:', 
-                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
 
-                      // Tabla mejorada
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DataTable(
-                            columnSpacing: 20,
-                            dataRowHeight: 48,
-                            headingRowHeight: 48,
-                            horizontalMargin: 12,
-                            columns: [
-                              DataColumn(
-                                label: Text('Habitación', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('Ingreso', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('Salida', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('Cantidad', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('Noches', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('P. Unitario', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                              DataColumn(
-                                label: Text('Subtotal', 
-                                    style: TextStyle(color: Colors.white)),
-                              ),
-                            ],
-                            rows: items.map((item) {
-                              final detalles = item['detalles'] ?? {};
-                              final nombreHabitacion = detalles['nombre_habitacion'] ?? 'Sin nombre';
-                              final cantidad = detalles['cantidad'] ?? 0;
-                              final fechaIngreso = detalles['fecha_ingreso'] ?? '';
-                              final fechaSalida = detalles['fecha_salida'] ?? '';
-                              final noches = detalles['cantidad_noches'] ?? 0;
-                              final tarifa = (detalles['tarifa'] ?? 0).toDouble();
-                              final subtotal = (detalles['subtotal'] ?? 0).toDouble();
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(nombreHabitacion.toString(),
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text(formatFecha(fechaIngreso),
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text(formatFecha(fechaSalida),
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text(cantidad.toString(),
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text(noches.toString(),
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text('Bs ${tarifa.toStringAsFixed(2)}',
-                                      style: textTheme.bodyMedium)),
-                                  DataCell(Text('Bs ${subtotal.toStringAsFixed(2)}',
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ))),
-                                ],
-                              );
-                            }).toList(),
-                            headingRowColor: MaterialStateProperty.resolveWith<Color>(
-                              (Set<MaterialState> states) => primaryColor,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
+                      // Información de la cotización
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          color: cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Cotización N° ${widget.idCotizacion}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: darkBlue,
+                                  ),
+                                ),
+                                Text(
+                                  formatFecha(DateTime.now()),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInfoRow('Cliente:', widget.nombreCliente),
+                            _buildInfoRow('CI/NIT:', widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
+                            const SizedBox(height: 8),
+                            _buildInfoRow('Estado:', cotizacionData?['estado'] ?? 'N/D'),
+                            _buildInfoRow('Fecha creación:', formatFecha(cotizacionData?['fecha_creacion'])),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Detalle de habitaciones
+                      Text(
+                        'Detalle de Habitaciones',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: darkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (items.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No hay habitaciones en esta cotización',
+                              style: TextStyle(
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          decoration: BoxDecoration(
+                            color: cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Encabezado de la tabla
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: darkBlue.withOpacity(0.1),
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12),
+                                  ),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        'Habitación',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Cant.',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Noches',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Subtotal',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.end,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Filas de la tabla
+                              ...items.map((item) {
+                                final detalles = item['detalles'] ?? {};
+                                final nombreHabitacion =
+                                    detalles['nombre_habitacion'] ?? 'Sin nombre';
+                                final cantidad = detalles['cantidad'] ?? 0;
+                                final noches = detalles['cantidad_noches'] ?? 0;
+                                final subtotal = (detalles['subtotal'] ?? 0).toDouble();
+
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: borderColor,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              nombreHabitacion.toString(),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${formatFecha(detalles['fecha_ingreso'])} - ${formatFecha(detalles['fecha_salida'])}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          cantidad.toString(),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          noches.toString(),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Bs ${subtotal.toStringAsFixed(2)}',
+                                          textAlign: TextAlign.end,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryGreen,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Total final
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: darkBlue.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Total final:', 
-                                style: textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                )),
-                            Text('Bs ${totalFinal.toStringAsFixed(2)}', 
-                                style: textTheme.headlineSmall?.copyWith(
-                                  color: primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                )),
+                            Text(
+                              'Total Final:',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                            Text(
+                              'Bs ${totalFinal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: primaryGreen,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 30),
-                      Center(
-                        child: ElevatedButton.icon(
+                      const SizedBox(height: 32),
+
+                      // Botón de generar PDF
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
                           onPressed: _generatePDF,
-                          icon: const Icon(Icons.picture_as_pdf),
-                          label: const Text('Descargar PDF'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
+                            backgroundColor: darkBlue,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation: 4,
+                            elevation: 2,
+                            shadowColor: darkBlue.withOpacity(0.3),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.picture_as_pdf, size: 20),
+                              SizedBox(width: 8),
+                              Text('GENERAR PDF'),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

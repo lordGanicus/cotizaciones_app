@@ -18,9 +18,15 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
     required this.ciCliente,
   });
 
+  // Colores del diseño
   static const Color primaryGreen = Color(0xFF00B894);
   static const Color darkBlue = Color(0xFF2D4059);
   static const Color lightBackground = Color(0xFFFAFAFA);
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF2D4059);
+  static const Color textSecondary = Color(0xFF555555);
+  static const Color borderColor = Color(0xFFE0E0E0);
+  static const Color errorColor = Color(0xFFE74C3C);
 
   Future<void> _guardarEnSupabase(BuildContext context, WidgetRef ref) async {
     final supabase = Supabase.instance.client;
@@ -28,7 +34,14 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
 
     if (habitaciones.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agrega al menos una habitación antes de continuar')),
+        SnackBar(
+          content: const Text('Agrega al menos una habitación antes de continuar'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: errorColor,
+        ),
       );
       return;
     }
@@ -127,7 +140,14 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al guardar: $e')),
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: errorColor,
+          ),
         );
       }
     }
@@ -136,96 +156,250 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final habitaciones = ref.watch(cotizacionHabitacionProvider);
+    final total = habitaciones.fold(0.0, (sum, h) => sum + (h.tarifa * h.cantidad * h.cantidadNoches));
 
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Paso 4 - Confirmar habitaciones'),
+        title: const Text(
+          'Confirmar Habitaciones',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         backgroundColor: darkBlue,
         foregroundColor: Colors.white,
         centerTitle: true,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Expanded(
-              child: habitaciones.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No se agregaron habitaciones.',
+            // Lista de habitaciones o estado vacío
+            if (habitaciones.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.hotel,
+                        size: 48,
+                        color: darkBlue.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No hay habitaciones para confirmar',
                         style: TextStyle(
                           fontSize: 16,
-                          color: darkBlue.withOpacity(0.7),
+                          color: textSecondary,
                         ),
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: habitaciones.length,
-                      itemBuilder: (context, index) {
-                        final h = habitaciones[index];
-                        final subtotal = h.tarifa * h.cantidad * h.cantidadNoches;
+                      const SizedBox(height: 8),
+                      Text(
+                        'Regresa al paso anterior para agregar',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: textSecondary.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Resumen de Habitaciones',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: darkBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: habitaciones.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final h = habitaciones[index];
+                          final subtotal = h.tarifa * h.cantidad * h.cantidadNoches;
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 4,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            title: Text(
-                              h.nombreHabitacion,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: darkBlue),
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: cardBackground,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Cantidad: ${h.cantidad}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
-                                  Text('Ingreso: ${DateFormat('dd/MM/yyyy').format(h.fechaIngreso)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
-                                  Text('Salida: ${DateFormat('dd/MM/yyyy').format(h.fechaSalida)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
-                                  Text('Noches: ${h.cantidadNoches}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
-                                  Text('Tarifa: Bs ${h.tarifa.toStringAsFixed(2)}', style: TextStyle(color: darkBlue.withOpacity(0.8))),
-                                ],
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      h.nombreHabitacion,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Bs ${subtotal.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: primaryGreen,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildDetailRow(
+                                  Icons.calendar_today,
+                                  'Fechas',
+                                  '${DateFormat('dd/MM/yyyy').format(h.fechaIngreso)} - ${DateFormat('dd/MM/yyyy').format(h.fechaSalida)}',
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDetailRow(
+                                        Icons.nights_stay,
+                                        'Noches',
+                                        h.cantidadNoches.toString(),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _buildDetailRow(
+                                        Icons.king_bed,
+                                        'Cantidad',
+                                        h.cantidad.toString(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                _buildDetailRow(
+                                  Icons.attach_money,
+                                  'Tarifa por noche',
+                                  'Bs ${h.tarifa.toStringAsFixed(2)}',
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (habitaciones.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: darkBlue.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total:',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
                               ),
                             ),
-                            trailing: Text(
-                              'Bs ${subtotal.toStringAsFixed(2)}',
+                            Text(
+                              'Bs ${total.toStringAsFixed(2)}',
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
                                 color: primaryGreen,
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+            // Botón de guardar
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: () => _guardarEnSupabase(context, ref),
-                icon: const Icon(Icons.save_alt),
-                label: const Text('Guardar cotización'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   backgroundColor: primaryGreen,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                  shadowColor: primaryGreen.withOpacity(0.3),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.save_alt, size: 20),
+                    SizedBox(width: 8),
+                    Text('GUARDAR COTIZACIÓN'),
+                  ],
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: primaryGreen,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 14,
+            color: textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

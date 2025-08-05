@@ -16,17 +16,21 @@ class _CrearCotizacionHabitacionStep1State
     extends State<CrearCotizacionHabitacionStep1> {
   final supabase = Supabase.instance.client;
 
-  final TextEditingController _nombreClienteController =
-      TextEditingController();
+  final TextEditingController _nombreClienteController = TextEditingController();
   final TextEditingController _ciClienteController = TextEditingController();
 
   String? nombreEstablecimiento;
   bool isLoading = true;
   String? error;
 
+  // Colores del diseño
   static const Color primaryGreen = Color(0xFF00B894);
   static const Color darkBlue = Color(0xFF2D4059);
   static const Color lightBackground = Color(0xFFFAFAFA);
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF2D4059);
+  static const Color textSecondary = Color(0xFF555555);
+  static const Color borderColor = Color(0xFFE0E0E0);
 
   @override
   void initState() {
@@ -76,7 +80,14 @@ class _CrearCotizacionHabitacionStep1State
 
     if (nombre.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor ingrese el nombre del cliente')),
+        const SnackBar(
+          content: Text('Por favor ingrese el nombre del cliente'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+          backgroundColor: darkBlue,
+        ),
       );
       return;
     }
@@ -106,7 +117,14 @@ class _CrearCotizacionHabitacionStep1State
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar cliente: $e')),
+        SnackBar(
+          content: Text('Error al guardar cliente: $e'),
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+          backgroundColor: Colors.red[400],
+        ),
       );
     }
   }
@@ -116,96 +134,315 @@ class _CrearCotizacionHabitacionStep1State
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Paso 1 - Datos del Cliente'),
+        title: const Text(
+          'Datos del Cliente',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         backgroundColor: darkBlue,
         foregroundColor: Colors.white,
         centerTitle: true,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Cargando información...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : error != null
-              ? Center(child: Text(error!))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red[400],
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          error!,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _cargarEstablecimientoUsuario,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reintentar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (nombreEstablecimiento != null)
-                        Text(
-                          'Hotel: $nombreEstablecimiento',
+                      // Tarjeta de información del hotel
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: primaryGreen.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.hotel,
+                                color: primaryGreen,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Hotel',
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    nombreEstablecimiento ?? 'No especificado',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Título de sección
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Text(
+                          'Información del Cliente',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                             color: darkBlue,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Text(
+                          'Complete los datos requeridos',
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
-                      Text(
-                        'Información del Cliente',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: darkBlue,
+
+                      // Formulario
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            // Campo de nombre
+                            TextFormField(
+                              controller: _nombreClienteController,
+                              style: const TextStyle(color: textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'Nombre completo',
+                                labelStyle: TextStyle(color: textSecondary),
+                                floatingLabelStyle:
+                                    TextStyle(color: primaryGreen),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: primaryGreen,
+                                    width: 2,
+                                  ),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.person_outline,
+                                  color: darkBlue.withOpacity(0.6),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Campo de CI/NIT
+                            TextFormField(
+                              controller: _ciClienteController,
+                              style: const TextStyle(color: textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'CI / NIT (opcional)',
+                                labelStyle: TextStyle(color: textSecondary),
+                                floatingLabelStyle:
+                                    TextStyle(color: primaryGreen),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: primaryGreen,
+                                    width: 2,
+                                  ),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.badge_outlined,
+                                  color: darkBlue.withOpacity(0.6),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 16,
+                                ),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _nombreClienteController,
-                        decoration: InputDecoration(
-                          labelText: 'Nombre del cliente',
-                          border: OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.person_outline),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _ciClienteController,
-                        decoration: InputDecoration(
-                          labelText: 'CI / NIT (opcional)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.badge_outlined),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
+
+                      // Botón de continuar
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
+                        child: ElevatedButton(
                           onPressed: _guardarClienteYContinuar,
-                          icon: const Icon(Icons.navigate_next),
-                          label: const Text('Siguiente'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryGreen,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             textStyle: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            elevation: 2,
+                            shadowColor: primaryGreen.withOpacity(0.3),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('CONTINUAR'),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward, size: 20),
+                            ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      // Botón de cancelar
                       SizedBox(
                         width: double.infinity,
-                        child: OutlinedButton.icon(
+                        child: TextButton(
                           onPressed: () => Navigator.of(context).maybePop(),
-                          icon: const Icon(Icons.close),
-                          label: const Text('Cancelar'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            textStyle: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            side: BorderSide(color: darkBlue),
-                            foregroundColor: darkBlue,
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
