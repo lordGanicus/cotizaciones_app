@@ -57,11 +57,12 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       } else {
         cotizacionesFiltradas = cotizaciones.where((cotizacion) {
           final fecha = cotizacion['fecha_creacion'].toString().toLowerCase();
-          final cliente = (cotizacion['nombre_cliente'] ?? '').toString().toLowerCase();
+          final cliente =
+              (cotizacion['nombre_cliente'] ?? '').toString().toLowerCase();
           final tipo = (cotizacion['tipo'] ?? '').toString().toLowerCase();
           return fecha.contains(query) ||
-                cliente.contains(query) ||
-                tipo.contains(query);
+              cliente.contains(query) ||
+              tipo.contains(query);
         }).toList();
       }
     });
@@ -72,9 +73,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
-      final responseUser = await supabase
-          .from('usuarios')
-          .select('''
+      final responseUser = await supabase.from('usuarios').select('''
             nombre_completo,
             ci,
             genero,
@@ -84,9 +83,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
             roles!usuarios_id_rol_fkey(nombre),
             establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo, id),
             subestablecimientos(nombre, logotipo, id)
-          ''')
-          .eq('id', user.id)
-          .maybeSingle();
+          ''').eq('id', user.id).maybeSingle();
 
       print('responseUser: $responseUser');
 
@@ -131,9 +128,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     if (user == null) return;
 
     try {
-      final response = await supabase.rpc('obtener_cotizaciones_detalladas', params: {
-        'p_id_usuario': user.id
-      });
+      final response = await supabase.rpc('obtener_cotizaciones_detalladas',
+          params: {'p_id_usuario': user.id});
 
       setState(() {
         cotizaciones = List<Map<String, dynamic>>.from(response);
@@ -192,9 +188,13 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
-    final nuevaCotizacion = await supabase.from('cotizaciones').insert({
-      'id_usuario': user.id,
-    }).select().single();
+    final nuevaCotizacion = await supabase
+        .from('cotizaciones')
+        .insert({
+          'id_usuario': user.id,
+        })
+        .select()
+        .single();
 
     if (context.mounted) {
       setState(() => showCreateDialog = false);
@@ -202,7 +202,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CrearCotizacionHabitacionStep1(idCotizacion: idCotizacion),
+          builder: (_) =>
+              CrearCotizacionHabitacionStep1(idCotizacion: idCotizacion),
         ),
       );
     }
@@ -212,9 +213,13 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     final user = supabase.auth.currentUser;
     if (user == null || hotelUnico == null) return;
 
-    final nuevaCotizacion = await supabase.from('cotizaciones').insert({
-      'id_usuario': user.id,
-    }).select().single();
+    final nuevaCotizacion = await supabase
+        .from('cotizaciones')
+        .insert({
+          'id_usuario': user.id,
+        })
+        .select()
+        .single();
 
     if (context.mounted) {
       setState(() => showCreateDialog = false);
@@ -237,9 +242,13 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
-    final nuevaCotizacion = await supabase.from('cotizaciones').insert({
-      'id_usuario': user.id,
-    }).select().single();
+    final nuevaCotizacion = await supabase
+        .from('cotizaciones')
+        .insert({
+          'id_usuario': user.id,
+        })
+        .select()
+        .single();
 
     if (context.mounted) {
       setState(() => showCreateDialog = false);
@@ -404,7 +413,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     );
   }
 
-  Widget _buildDialogButton(String text, IconData icon, VoidCallback onPressed) {
+  Widget _buildDialogButton(
+      String text, IconData icon, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -445,19 +455,20 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _obtenerTipo(cotizacion) == 'Habitación' 
-                      ? const Color(0xFF00B894).withOpacity(0.1)
-                      : const Color(0xFF2D4059).withOpacity(0.1),
+                    color: _obtenerTipo(cotizacion) == 'Habitación'
+                        ? const Color(0xFF00B894).withOpacity(0.1)
+                        : const Color(0xFF2D4059).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     _obtenerTipo(cotizacion),
                     style: TextStyle(
                       color: _obtenerTipo(cotizacion) == 'Habitación'
-                        ? const Color(0xFF00B894)
-                        : const Color(0xFF2D4059),
+                          ? const Color(0xFF00B894)
+                          : const Color(0xFF2D4059),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -546,7 +557,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   ),
                 ),
               ),
-              
+
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -554,7 +565,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Logo
-                      if (hotelUnico != null && hotelUnico!['logotipo'] != null) ...[
+                      if (hotelUnico != null &&
+                          hotelUnico!['logotipo'] != null) ...[
                         Center(
                           child: Container(
                             width: 100,
@@ -579,7 +591,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                         const SizedBox(height: 20),
                       ],
-                      
+
                       // Usuario info
                       if (datosUsuario != null) ...[
                         Row(
@@ -621,7 +633,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                         const SizedBox(height: 30),
                       ],
-                      
+
                       // Barra de búsqueda
                       TextField(
                         controller: _searchController,
@@ -634,7 +646,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // Título de sección
                       const Text(
                         'Historial de cotizaciones',
@@ -645,7 +657,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Lista de cotizaciones
                       if (cotizacionesFiltradas.isEmpty) ...[
                         const Padding(
@@ -658,20 +670,22 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                           ),
                         ),
                       ] else ...[
-                        ...cotizacionesFiltradas.map((cotizacion) => 
-                          _buildCotizacionItem(cotizacion)
-                        ).toList(),
+                        ...cotizacionesFiltradas
+                            .map((cotizacion) =>
+                                _buildCotizacionItem(cotizacion))
+                            .toList(),
                       ],
-                      
-                      const SizedBox(height: 120), // Espacio para los botones flotantes
+
+                      const SizedBox(
+                          height: 120), // Espacio para los botones flotantes
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          
-          // Botones flotantes en la parte inferior
+
+          // Botones flotantes en la parte inferior con roles de usuario
           Positioned(
             bottom: 0,
             left: 0,
@@ -685,7 +699,9 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                 children: [
                   Expanded(
                     child: Material(
-                      color: showCreateDialog ? const Color(0xFF00B894) : Colors.transparent,
+                      color: showCreateDialog
+                          ? const Color(0xFF00B894)
+                          : Colors.transparent,
                       child: InkWell(
                         onTap: () => setState(() {
                           showCreateDialog = !showCreateDialog;
@@ -716,17 +732,20 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                       ),
                     ),
                   ),
-                  if (isAdmin || isGerente) // Solo muestra el botón de gestionar para admin/gerente
+                  if (isAdmin ||
+                      isGerente) // Solo muestra el botón de gestionar para admin/gerente
                     Expanded(
                       child: Material(
-                        color: showManageDialog ? const Color(0xFF00B894) : Colors.transparent,
+                        color: showManageDialog
+                            ? const Color(0xFF00B894)
+                            : Colors.transparent,
                         child: InkWell(
-                          onTap: isUsuarioNormal 
-                            ? null 
-                            : () => setState(() {
-                              showManageDialog = !showManageDialog;
-                              showCreateDialog = false;
-                            }),
+                          onTap: isUsuarioNormal
+                              ? null
+                              : () => setState(() {
+                                    showManageDialog = !showManageDialog;
+                                    showCreateDialog = false;
+                                  }),
                           child: Container(
                             height: 98,
                             child: Column(
@@ -734,14 +753,18 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                               children: [
                                 Icon(
                                   Icons.folder,
-                                  color: isUsuarioNormal ? Colors.white.withOpacity(0.5) : Colors.white,
+                                  color: isUsuarioNormal
+                                      ? Colors.white.withOpacity(0.5)
+                                      : Colors.white,
                                   size: 24,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Gestionar',
                                   style: TextStyle(
-                                    color: isUsuarioNormal ? Colors.white.withOpacity(0.5) : Colors.white,
+                                    color: isUsuarioNormal
+                                        ? Colors.white.withOpacity(0.5)
+                                        : Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -756,7 +779,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
               ),
             ),
           ),
-          
+
           // Diálogos superpuestos
           if (showCreateDialog)
             Positioned.fill(
@@ -768,7 +791,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                 ),
               ),
             ),
-          
+
           if (showManageDialog)
             Positioned.fill(
               child: GestureDetector(
