@@ -52,14 +52,47 @@ class _CrearCotizacionComidaStep4State
     try {
       final idCotizacion = widget.idCotizacion;
 
-      // Eliminar items anteriores
+      // 1. Buscar cliente por CI en la tabla clientes
+      final clienteExistente = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('ci', cotizacion.ciCliente)
+          .maybeSingle();
+
+      String idCliente;
+
+      if (clienteExistente == null) {
+        // 2. Insertar cliente si no existe
+        final insertCliente = await supabase.from('clientes').insert({
+          'nombre_completo': cotizacion.nombreCliente,
+          'ci': cotizacion.ciCliente,
+        }).select('id').single();
+
+        idCliente = insertCliente['id'] as String;
+      } else {
+        // Cliente ya existe, tomar su id
+        idCliente = clienteExistente['id'] as String;
+      }
+
+      // 3. Actualizar cotización con id_cliente y total
+      final totalCalculado =
+          cotizacion.itemsComida.fold<double>(0, (sum, i) => sum + i.subtotal);
+
+      await supabase
+          .from('cotizaciones')
+          .update({
+            'total': totalCalculado,
+            'id_cliente': idCliente,
+          })
+          .eq('id', idCotizacion);
+
+      // 4. Eliminar items anteriores y volver a insertar los nuevos
       await supabase
           .from('items_cotizacion')
           .delete()
           .eq('id_cotizacion', idCotizacion)
           .eq('tipo', 'comida');
 
-      // Insertar nuevos items (sin 'total')
       final itemsMap = cotizacion.itemsComida.map((item) {
         return {
           'id_cotizacion': idCotizacion,
@@ -75,15 +108,6 @@ class _CrearCotizacionComidaStep4State
 
       await supabase.from('items_cotizacion').insert(itemsMap);
 
-      // Actualizar total en cotizaciones
-      final totalCalculado =
-          cotizacion.itemsComida.fold<double>(0, (sum, i) => sum + i.subtotal);
-
-      await supabase
-          .from('cotizaciones')
-          .update({'total': totalCalculado})
-          .eq('id', idCotizacion);
-
       setState(() => _isSaving = false);
 
       Navigator.pushReplacement(
@@ -91,6 +115,8 @@ class _CrearCotizacionComidaStep4State
         MaterialPageRoute(
           builder: (_) => ResumenFinalCotizacionComidaPage(
             idCotizacion: idCotizacion,
+            nombreCliente: cotizacion.nombreCliente,
+            ciCliente: cotizacion.ciCliente,
           ),
         ),
       );

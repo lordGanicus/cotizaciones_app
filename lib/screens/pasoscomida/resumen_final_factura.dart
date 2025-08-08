@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
-import 'dart:convert';
-import 'dart:typed_data';
+import 'generador_pdf_comida.dart';
 
 class ResumenFinalCotizacionComidaPage extends StatefulWidget {
   final String idCotizacion;
+  final String nombreCliente;
+  final String ciCliente;
 
   const ResumenFinalCotizacionComidaPage({
     Key? key,
     required this.idCotizacion,
+    required this.nombreCliente,
+    required this.ciCliente,
   }) : super(key: key);
 
   @override
@@ -22,18 +23,21 @@ class ResumenFinalCotizacionComidaPage extends StatefulWidget {
 
 class _ResumenFinalCotizacionComidaPageState
     extends State<ResumenFinalCotizacionComidaPage> {
-  // Colores definidos (coherentes con salones)
-  final Color primaryGreen = const Color(0xFF00B894);
-  final Color darkBlue = const Color(0xFF2D4059);
-  final Color lightBackground = const Color(0xFFFAFAFA);
-  final Color cardBackground = Colors.white;
-  final Color textColor = const Color(0xFF2D4059);
-  final Color secondaryTextColor = const Color(0xFF555555);
-  final Color tableHeaderColor = const Color(0xFF2D4059);
+  // Colores del diseño
+  static const Color primaryGreen = Color(0xFF00B894);
+  static const Color darkBlue = Color(0xFF2D4059);
+  static const Color lightBackground = Color(0xFFFAFAFA);
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF2D4059);
+  static const Color textSecondary = Color(0xFF555555);
+  static const Color borderColor = Color(0xFFE0E0E0);
+  static const Color errorColor = Color(0xFFE74C3C);
 
   late final SupabaseClient supabase;
-  String? nombreHotel;
-  String? logoHotel;
+  String? nombreSubestablecimiento;
+  String? logoSubestablecimiento;
+  String? membreteSubestablecimiento;
+  String? nombreUsuario;
   Map<String, dynamic>? cotizacionData;
   List<Map<String, dynamic>> items = [];
   double totalFinal = 0;
@@ -57,27 +61,30 @@ class _ResumenFinalCotizacionComidaPageState
       final user = supabase.auth.currentUser;
       if (user == null) throw 'Usuario no autenticado';
 
-      // Obtener id_establecimiento del usuario actual
+      // Obtener datos del usuario
       final usuarioResp = await supabase
           .from('usuarios')
-          .select('id_establecimiento')
+          .select('id_subestablecimiento, nombre_completo')
           .eq('id', user.id)
           .single();
 
-      final idEstablecimiento = usuarioResp['id_establecimiento'];
-      if (idEstablecimiento == null) throw 'Establecimiento no encontrado';
+      nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
+      final idSubestablecimiento = usuarioResp['id_subestablecimiento'];
 
-      // Obtener nombre y logo del establecimiento
-      final establecimientoResp = await supabase
-          .from('establecimientos')
-          .select('nombre, logotipo')
-          .eq('id', idEstablecimiento)
+      if (idSubestablecimiento == null) throw 'Subestablecimiento no encontrado';
+
+      // Obtener datos del SUBestablecimiento
+      final subestablecimientoResp = await supabase
+          .from('subestablecimientos')
+          .select('nombre, logotipo, membrete')
+          .eq('id', idSubestablecimiento)
           .single();
 
-      nombreHotel = establecimientoResp['nombre'];
-      logoHotel = establecimientoResp['logotipo'];
+      nombreSubestablecimiento = subestablecimientoResp['nombre'] as String?;
+      logoSubestablecimiento = subestablecimientoResp['logotipo'] as String?;
+      membreteSubestablecimiento = subestablecimientoResp['membrete'] as String?;
 
-      // Cargar datos de la cotización
+      // Obtener datos de la cotización
       final cotizacionResp = await supabase
           .from('cotizaciones')
           .select()
@@ -86,7 +93,7 @@ class _ResumenFinalCotizacionComidaPageState
 
       cotizacionData = cotizacionResp;
 
-      // Obtener items solo tipo comida para esta cotización
+      // Obtener items de tipo comida
       final itemsResp = await supabase
           .from('items_cotizacion')
           .select()
@@ -95,22 +102,18 @@ class _ResumenFinalCotizacionComidaPageState
 
       items = List<Map<String, dynamic>>.from(itemsResp);
 
-      // Calcular total final sumando cada item
-      totalFinal = items.fold<double>(0, (prev, item) {
-        double totalItem = 0;
-        final val = item['total'];
-        if (val is num) {
-          totalItem = val.toDouble();
-        } else {
-          final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
-          final precio =
-              double.tryParse(item['precio_unitario'].toString()) ?? 0;
-          totalItem = cantidad * precio;
-        }
-        return prev + totalItem;
-      });
+      // Calcular total final
+      totalFinal = 0;
+      for (var item in items) {
+        final cantidad = (item['cantidad'] ?? 0) as int;
+        final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+        final subtotal = precioUnitario * cantidad;
+        totalFinal += subtotal;
+      }
 
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         error = 'Error cargando datos: $e';
@@ -121,393 +124,74 @@ class _ResumenFinalCotizacionComidaPageState
 
   String formatFecha(dynamic fecha) {
     try {
-      return DateFormat('dd/MM/yyyy').format(DateTime.parse(fecha.toString()));
+      final dt = DateTime.parse(fecha.toString());
+      return DateFormat('dd/MM/yyyy').format(dt);
     } catch (_) {
       return fecha?.toString() ?? 'N/D';
     }
   }
 
-  Future<Uint8List> _generarPdf() async {
-    final pdf = pw.Document();
-    final fechaActual = DateFormat('dd/MM/yyyy').format(DateTime.now());
+  Future<void> _generatePDF() async {
+    try {
+      final pdfBytes = await generarPdfCotizacionComida(
+        nombreSubestablecimiento: nombreSubestablecimiento ?? 'Restaurante',
+        logoSubestablecimiento: logoSubestablecimiento,
+        membreteSubestablecimiento: membreteSubestablecimiento,
+        idCotizacion: widget.idCotizacion,
+        nombreCliente: widget.nombreCliente,
+        ciCliente: widget.ciCliente,
+        cotizacionData: cotizacionData,
+        items: items,
+        totalFinal: totalFinal,
+        nombreUsuario: nombreUsuario ?? 'Usuario',
+      );
 
-    pw.ImageProvider? logoImage;
-    if (logoHotel != null && logoHotel!.isNotEmpty) {
-      try {
-        logoImage = await networkImage(logoHotel!);
-      } catch (_) {}
+      await Printing.layoutPdf(
+        onLayout: (format) async => pdfBytes,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al generar PDF: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
     }
+  }
 
-    final itemsTable = items.map((item) {
-      final desc = item['descripcion'] ?? 'Sin descripción';
-      final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
-      final precioUnitario =
-          double.tryParse(item['precio_unitario'].toString()) ?? 0.0;
-      final totalItem = item['total'] is num
-          ? item['total'].toDouble()
-          : (precioUnitario * cantidad);
-
-      return [
-        desc.toString(),
-        cantidad.toString(),
-        'Bs ${precioUnitario.toStringAsFixed(2)}',
-        'Bs ${totalItem.toStringAsFixed(2)}',
-      ];
-    }).toList();
-
-    pdf.addPage(
-      pw.MultiPage(
-        build: (context) => [
-          if (logoImage != null)
-            pw.Center(child: pw.Image(logoImage, height: 100)),
-          if (nombreHotel != null)
-            pw.Center(
-              child: pw.Text(
-                nombreHotel!,
-                style: pw.TextStyle(
-                    fontSize: 20, fontWeight: pw.FontWeight.bold),
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: textSecondary,
               ),
             ),
-          pw.SizedBox(height: 12),
-          pw.Text('La Paz, $fechaActual'),
-          pw.Text('COT N°: ${widget.idCotizacion}',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 16),
-          pw.Text('DETALLES DE LA COTIZACIÓN',
-              style:
-                  pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 8),
-          pw.Text('Fecha creación: ${formatFecha(cotizacionData?['fecha_creacion'])}'),
-          pw.Text('Estado: ${cotizacionData?['estado'] ?? 'N/D'}'),
-          pw.SizedBox(height: 16),
-          pw.Text('🧾 Detalle de la propuesta:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 8),
-          pw.Table.fromTextArray(
-            headers: ['Descripción', 'Cantidad', 'P. Unitario', 'Total'],
-            data: itemsTable,
-            headerStyle:
-                pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            headerDecoration: pw.BoxDecoration(color: PdfColors.grey700),
-            cellAlignment: pw.Alignment.centerLeft,
-            border: pw.TableBorder.all(color: PdfColors.grey400),
           ),
-          pw.SizedBox(height: 16),
-          pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'Total final: Bs ${totalFinal.toStringAsFixed(2)}',
-              style:
-                  pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          )
+          ),
         ],
       ),
-    );
-
-    return pdf.save();
-  }
-
-  Future<void> _descargarPdf() async {
-    final bytes = await _generarPdf();
-    await Printing.layoutPdf(onLayout: (_) => bytes);
-  }
-
-  Future<void> _compartirPdf() async {
-    final bytes = await _generarPdf();
-    await Printing.sharePdf(
-        bytes: bytes, filename: 'cotizacion_comida_${widget.idCotizacion}.pdf');
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        if (logoHotel != null && logoHotel!.isNotEmpty)
-          Center(
-            child: Image.network(
-              logoHotel!,
-              height: 80,
-              errorBuilder: (_, __, ___) =>
-                  Icon(Icons.restaurant_menu, size: 80, color: darkBlue),
-            ),
-          ),
-        const SizedBox(height: 12),
-        if (nombreHotel != null)
-          Text(
-            nombreHotel!,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: darkBlue,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildCotizacionDetails() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: darkBlue.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Detalles de la Cotización',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: darkBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: Text('Cotización N°:', style: TextStyle(color: secondaryTextColor)),
-                ),
-                Expanded(child: Text(widget.idCotizacion, style: TextStyle(color: textColor))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: Text('Fecha creación:', style: TextStyle(color: secondaryTextColor)),
-                ),
-                Expanded(
-                  child: Text(
-                    formatFecha(cotizacionData?['fecha_creacion']),
-                    style: TextStyle(color: textColor),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: Text('Estado:', style: TextStyle(color: secondaryTextColor)),
-                ),
-                Expanded(
-                  child: Text(
-                    cotizacionData?['estado'] ?? 'N/D',
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemsTable() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: darkBlue.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Detalle de la propuesta',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: darkBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Table(
-              border: TableBorder.all(
-                color: darkBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              columnWidths: const {
-                0: FlexColumnWidth(4),
-                1: FlexColumnWidth(1.5),
-                2: FlexColumnWidth(2),
-                3: FlexColumnWidth(2),
-              },
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(
-                    color: tableHeaderColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
-                    ),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'Descripción',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'Cantidad',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'P. Unitario',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'Total',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                ...items.map((item) {
-                  final desc = item['descripcion'] ?? 'Sin descripción';
-                  final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
-                  final precioUnitario = double.tryParse(item['precio_unitario'].toString()) ?? 0.0;
-                  final totalItem = item['total'] is num
-                      ? item['total'].toDouble()
-                      : precioUnitario * cantidad;
-
-                  return TableRow(
-                    decoration: BoxDecoration(
-                      color: items.indexOf(item) % 2 == 0
-                          ? lightBackground
-                          : cardBackground,
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          desc.toString(),
-                          style: TextStyle(color: textColor),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          cantidad.toString(),
-                          style: TextStyle(color: textColor),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Bs ${precioUnitario.toStringAsFixed(2)}',
-                          style: TextStyle(color: textColor),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Bs ${totalItem.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTotalSection() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: darkBlue.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Total final:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: darkBlue,
-              ),
-            ),
-            Text(
-              'Bs ${totalFinal.toStringAsFixed(2)}',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryGreen,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _descargarPdf,
-          icon: const Icon(Icons.download, color: Colors.white),
-          label: const Text('Descargar PDF', style: TextStyle(color: Colors.white)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryGreen,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        ElevatedButton.icon(
-          onPressed: _compartirPdf,
-          icon: Icon(Icons.share, color: darkBlue),
-          label: Text('Compartir', style: TextStyle(color: darkBlue)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: lightBackground,
-            side: BorderSide(color: darkBlue.withOpacity(0.3)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -516,35 +200,391 @@ class _ResumenFinalCotizacionComidaPageState
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Resumen de Cotización de Comida'),
+        title: const Text(
+          'Resumen de Cotización - Comida',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: darkBlue,
         foregroundColor: Colors.white,
-        elevation: 0,
         centerTitle: true,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: _generatePDF,
+            tooltip: 'Generar PDF',
+          ),
+        ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00B894)))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cargando resumen...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : error != null
               ? Center(
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: errorColor,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          error!,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reintentar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
+                      // Encabezado con logo
+                      if (logoSubestablecimiento != null && logoSubestablecimiento!.isNotEmpty)
+                        Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: borderColor,
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Image.network(
+                              logoSubestablecimiento!,
+                              height: 80,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.restaurant,
+                                size: 60,
+                                color: darkBlue.withOpacity(0.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+
+                      if (nombreSubestablecimiento != null)
+                        Center(
+                          child: Text(
+                            nombreSubestablecimiento!,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: darkBlue,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 24),
-                      _buildCotizacionDetails(),
+
+                      // Información de la cotización
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Cotización N° ${widget.idCotizacion}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: darkBlue,
+                                  ),
+                                ),
+                                Text(
+                                  formatFecha(DateTime.now()),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInfoRow('Cliente:', widget.nombreCliente),
+                            _buildInfoRow('CI/NIT:', widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
+                            const SizedBox(height: 8),
+                            _buildInfoRow('Estado:', cotizacionData?['estado'] ?? 'N/D'),
+                            _buildInfoRow('Fecha creación:', formatFecha(cotizacionData?['fecha_creacion'])),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Detalle de items de comida
+                      Text(
+                        'Detalle de Servicios de Comida',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: darkBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (items.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No hay items de comida en esta cotización',
+                              style: TextStyle(
+                                color: textSecondary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          decoration: BoxDecoration(
+                            color: cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Encabezado de la tabla
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: darkBlue.withOpacity(0.1),
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12),
+                                  ),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        'Descripción',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Cant.',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'P. Unitario',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Subtotal',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.end,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Filas de la tabla
+                              ...items.map((item) {
+                                final descripcion = item['descripcion'] ?? 'Sin descripción';
+                                final cantidad = item['cantidad'] ?? 0;
+                                final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+                                final subtotal = cantidad * precioUnitario;
+
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: borderColor,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Text(
+                                          descripcion.toString(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          cantidad.toString(),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Bs ${precioUnitario.toStringAsFixed(2)}',
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Bs ${subtotal.toStringAsFixed(2)}',
+                                          textAlign: TextAlign.end,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryGreen,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Total final
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: darkBlue.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Final:',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                            Text(
+                              'Bs ${totalFinal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: primaryGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Botón de generar PDF
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _generatePDF,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: darkBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                            shadowColor: darkBlue.withOpacity(0.3),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.picture_as_pdf, size: 20),
+                              SizedBox(width: 8),
+                              Text('GENERAR PDF'),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      _buildItemsTable(),
-                      const SizedBox(height: 16),
-                      _buildTotalSection(),
-                      const SizedBox(height: 30),
-                      _buildActionButtons(),
                     ],
                   ),
                 ),
