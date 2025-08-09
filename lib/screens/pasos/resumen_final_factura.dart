@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
 import 'generador_pdf_habitacion.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
 
 class ResumenFinalCotizacionHabitacionPage extends StatefulWidget {
   final String idCotizacion;
@@ -131,20 +134,23 @@ class _ResumenFinalCotizacionHabitacionPageState
     }
   }
 
-  Future<void> _generatePDF() async {
-    try {
-      final pdfBytes = await generarPdfCotizacionHabitacion(
-        nombreHotel: nombreHotel ?? 'Hotel',
-        membreteUrl: membreteHotel,
-        idCotizacion: widget.idCotizacion,
-        nombreCliente: widget.nombreCliente,
-        ciCliente: widget.ciCliente,
-        cotizacionData: cotizacionData,
-        items: items,
-        totalFinal: totalFinal,
-        nombreUsuario: nombreUsuario ?? 'Usuario',
-      );
+  Future<Uint8List> _generatePDFBytes() async {
+    return await generarPdfCotizacionHabitacion(
+      nombreHotel: nombreHotel ?? 'Hotel',
+      membreteUrl: membreteHotel,
+      idCotizacion: widget.idCotizacion,
+      nombreCliente: widget.nombreCliente,
+      ciCliente: widget.ciCliente,
+      cotizacionData: cotizacionData,
+      items: items,
+      totalFinal: totalFinal,
+      nombreUsuario: nombreUsuario ?? 'Usuario',
+    );
+  }
 
+  Future<void> _savePDF() async {
+    try {
+      final pdfBytes = await _generatePDFBytes();
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
       );
@@ -152,7 +158,7 @@ class _ResumenFinalCotizacionHabitacionPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al generar PDF: $e'),
+            content: Text('Error al guardar PDF: $e'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -161,6 +167,113 @@ class _ResumenFinalCotizacionHabitacionPageState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _shareCotizacion() async {
+    try {
+      final pdfBytes = await _generatePDFBytes();
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/Cotizacion_${widget.idCotizacion.substring(0, 8)}.pdf');
+      await file.writeAsBytes(pdfBytes);
+
+      // Solución alternativa: Mostrar diálogo con opciones para compartir
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Compartir cotización'),
+          content: const Text('Seleccione cómo desea compartir la cotización'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showShareOptions(file);
+              },
+              child: const Text('Compartir PDF'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showTextShareOptions();
+              },
+              child: const Text('Compartir texto'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al preparar para compartir: $e'),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showShareOptions(File file) {
+    // Aquí puedes implementar tu propia lógica para compartir
+    // Por ejemplo, podrías usar la API de intent de Android o UIActivityViewController en iOS
+    // Esta es una implementación básica que muestra un diálogo informativo
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Compartir PDF'),
+        content: const Text('La cotización en PDF está lista para compartir. '
+            'Por favor, use la opción de compartir de su dispositivo.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTextShareOptions() {
+    final shareText = 'Cotización ${nombreHotel ?? 'Hotel'}\n'
+        'Cliente: ${widget.nombreCliente}\n'
+        'CI/NIT: ${widget.ciCliente}\n'
+        'Total: Bs ${totalFinal.toStringAsFixed(2)}\n'
+        'Fecha: ${formatFecha(DateTime.now())}';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Texto para compartir'),
+        content: SingleChildScrollView(
+          child: Text(shareText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _copyToClipboard(shareText);
+            },
+            child: const Text('Copiar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyToClipboard(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Texto copiado al portapapeles')),
+      );
     }
   }
 
@@ -186,13 +299,6 @@ class _ResumenFinalCotizacionHabitacionPageState
             bottom: Radius.circular(16),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: _generatePDF,
-            tooltip: 'Generar PDF',
-          ),
-        ],
       ),
       body: isLoading
           ? Center(
@@ -259,7 +365,6 @@ class _ResumenFinalCotizacionHabitacionPageState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Encabezado con logo y nombre del hotel
                       if (logoHotel != null && logoHotel!.isNotEmpty)
                         Center(
                           child: Container(
@@ -297,7 +402,6 @@ class _ResumenFinalCotizacionHabitacionPageState
                         ),
                       const SizedBox(height: 24),
 
-                      // Información de la cotización
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -317,12 +421,15 @@ class _ResumenFinalCotizacionHabitacionPageState
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Cotización N° ${widget.idCotizacion}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: darkBlue,
+                                Flexible(
+                                  child: Text(
+                                    'Cotización N° ${widget.idCotizacion.substring(0, 8)}...',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: darkBlue,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
@@ -335,16 +442,18 @@ class _ResumenFinalCotizacionHabitacionPageState
                             ),
                             const SizedBox(height: 16),
                             _buildInfoRow('Cliente:', widget.nombreCliente),
-                            _buildInfoRow('CI/NIT:', widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
+                            _buildInfoRow('CI/NIT:', 
+                                widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Estado:', cotizacionData?['estado'] ?? 'N/D'),
-                            _buildInfoRow('Fecha creación:', formatFecha(cotizacionData?['fecha_creacion'])),
+                            _buildInfoRow('Estado:', 
+                                cotizacionData?['estado'] ?? 'N/D'),
+                            _buildInfoRow('Fecha creación:', 
+                                formatFecha(cotizacionData?['fecha_creacion'])),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      // Detalle de habitaciones
                       Text(
                         'Detalle de Habitaciones',
                         style: TextStyle(
@@ -386,7 +495,6 @@ class _ResumenFinalCotizacionHabitacionPageState
                           ),
                           child: Column(
                             children: [
-                              // Encabezado de la tabla
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 12, horizontal: 16),
@@ -437,7 +545,6 @@ class _ResumenFinalCotizacionHabitacionPageState
                                   ],
                                 ),
                               ),
-                              // Filas de la tabla
                               ...items.map((item) {
                                 final detalles = item['detalles'] ?? {};
                                 final nombreHabitacion =
@@ -513,7 +620,6 @@ class _ResumenFinalCotizacionHabitacionPageState
                         ),
                       const SizedBox(height: 24),
 
-                      // Total final
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -544,30 +650,54 @@ class _ResumenFinalCotizacionHabitacionPageState
                       ),
                       const SizedBox(height: 32),
 
-                      // Botón de generar PDF
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _generatePDF,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: darkBlue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _savePDF,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: darkBlue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.save, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('GUARDAR'),
+                                ],
+                              ),
                             ),
-                            elevation: 2,
-                            shadowColor: darkBlue.withOpacity(0.3),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.picture_as_pdf, size: 20),
-                              SizedBox(width: 8),
-                              Text('GENERAR PDF'),
-                            ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _shareCotizacion,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryGreen,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.share, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('COMPARTIR'),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                     ],

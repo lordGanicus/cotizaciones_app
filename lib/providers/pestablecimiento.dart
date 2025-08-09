@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/Mestablecimiento.dart';
 import '../models/Msubestablecimiento.dart';
 import '../utils/cloudinary_upload.dart';
-
+import 'usuario_provider.dart';
 final supabase = Supabase.instance.client;
 
 final establecimientosProvider =
@@ -239,3 +239,35 @@ class SubestablecimientosNotifier
 );
 
 }
+final subestablecimientoPorIdProvider = FutureProvider.family<Subestablecimiento, String>((ref, idSubestablecimiento) async {
+  final supabase = Supabase.instance.client;
+
+  final response = await supabase
+      .from('subestablecimientos')
+      .select()
+      .eq('id', idSubestablecimiento)
+      .single();
+
+  return Subestablecimiento.fromMap(response as Map<String, dynamic>);
+});
+
+final establecimientosFiltradosProvider = FutureProvider<List<Establecimiento>>((ref) async {
+  final usuario = await ref.watch(usuarioActualProvider.future);
+
+  var query = supabase.from('establecimientos').select();
+
+  if (usuario.rolNombre?.toLowerCase() == 'gerente' && usuario.idEstablecimiento != null) {
+    // El gerente solo ve su establecimiento
+    query = query.eq('id', usuario.idEstablecimiento!);
+  }
+
+  final response = await query;
+
+  if (response == null || response is! List) {
+    return [];
+  }
+
+  return (response as List)
+      .map((e) => Establecimiento.fromMap(e as Map<String, dynamic>))
+      .toList();
+});

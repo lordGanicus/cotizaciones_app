@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/habitacion.dart';
 import '../../models/establecimiento.dart';
-import '../../providers/establecimiento_provider.dart';
+import '../../providers/establecimiento_provider.dart'; // Importa el filtered provider
 import '../../providers/habitaciones_provider.dart';
+import '../../providers/usuario_provider.dart'; // Para obtener usuario actual
 import 'habitacion_form.dart';
 
 class HabitacionesScreen extends ConsumerStatefulWidget {
@@ -17,8 +18,26 @@ class _HabitacionesScreenState extends ConsumerState<HabitacionesScreen> {
   String? establecimientoSeleccionado;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _seleccionarEstablecimientoAutomatico();
+  }
+
+  Future<void> _seleccionarEstablecimientoAutomatico() async {
+    final usuario = await ref.read(usuarioActualProvider.future);
+
+    // Si es gerente y tiene establecimiento, auto seleccionamos
+    if (usuario.rolNombre?.toLowerCase() == 'gerente' && usuario.idEstablecimiento != null) {
+      setState(() {
+        establecimientoSeleccionado = usuario.idEstablecimiento!;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final establecimientosAsync = ref.watch(establecimientosProvider);
+    // Usamos el provider filtrado (ya con lógica gerente/admin)
+    final establecimientosAsync = ref.watch(establecimientosFiltradosProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Gestión de Habitaciones')),
@@ -32,6 +51,24 @@ class _HabitacionesScreenState extends ConsumerState<HabitacionesScreen> {
                   return const Text('No hay establecimientos disponibles.');
                 }
 
+                // Si el usuario es gerente, no mostrar dropdown, ya que solo tiene 1 establecimiento
+                final usuario = ref.read(usuarioActualProvider);
+                if (usuario.asData?.value.rolNombre?.toLowerCase() == 'gerente' &&
+                    usuario.asData?.value.idEstablecimiento != null) {
+                  // Mostrar solo nombre del establecimiento seleccionado
+                  final est = establecimientos.firstWhere(
+                      (e) => e.id == usuario.asData!.value.idEstablecimiento!,
+                      orElse: () => Establecimiento(id: '', nombre: 'No disponible'));
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Establecimiento: ${est.nombre}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  );
+                }
+
+                // Para admin u otros roles, sí mostrar dropdown para elegir
                 return DropdownButtonFormField<String>(
                   value: establecimientoSeleccionado,
                   hint: const Text('Selecciona un establecimiento'),

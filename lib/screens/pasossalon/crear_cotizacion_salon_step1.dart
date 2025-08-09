@@ -200,6 +200,7 @@ class _Paso1CotizacionSalonPageState
         precioSalonTotal: precioSalon,
         serviciosSeleccionados: [],
         itemsAdicionales: [],
+    idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento,
       );
 
       if (listaSalones.isEmpty) {
@@ -215,8 +216,7 @@ class _Paso1CotizacionSalonPageState
             idCotizacion: widget.idCotizacion,
             idEstablecimiento: widget.idEstablecimiento,
             idUsuario: widget.idUsuario,
-            idSubestablecimiento:
-                widget.idSubestablecimiento, // PASAMOS EL SUBESTABLECIMIENTO
+            idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento, // Pasa el subestablecimiento del salón
           ),
         ),
       );

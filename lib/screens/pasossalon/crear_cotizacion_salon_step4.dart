@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/cotizacion_salon_provider.dart';
 import 'resumen_final_cotizacion_salon.dart';
+import 'crear_cotizacion_salon_step1.dart';
 
 class Paso4CotizacionSalonPage extends ConsumerWidget {
   final String idCotizacion;
@@ -358,6 +359,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                       'estado': 'borrador',
                       'total': total,
                       'id_cliente': idCliente,
+                      //'id_subestablecimiento': cotizacion.idSubestablecimiento,
                     }).select().single();
 
                     final idNuevaCotizacion = cotizacionRes['id'] as String;
@@ -370,6 +372,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                       'precio_unitario': subtotalSalon / horasValidas,
                       'descripcion': 'Alquiler de salón para evento ${cotizacion.tipoEvento} (${cotizacion.participantes} personas)',
                       'tipo': 'salon',
+                     // 'id_subestablecimiento': cotizacion.idSubestablecimiento,
                       'detalles': jsonEncode({
                         'fecha': cotizacion.fechaEvento.toIso8601String(),
                         'hora_inicio': cotizacion.horaInicio.toIso8601String(),
@@ -402,6 +405,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                           idCotizacion: idNuevaCotizacion,
                           nombreCliente: cotizacion.nombreCliente,
                           ciCliente: cotizacion.ciCliente,
+                          idSubestablecimiento: idSubestablecimiento,
                         ),
                       ),
                     );

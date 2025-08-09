@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/salon.dart';
+import 'usuario_provider.dart'; 
 
 final supabase = Supabase.instance.client;
 
@@ -92,7 +93,7 @@ class SalonesNotifier extends AsyncNotifier<List<Salon>> {
   }
 }
 
-// ✅ Filtro por subestablecimiento (actualizado: directo desde Supabase)
+// Filtro por subestablecimiento (consulta directa en Supabase)
 final salonesPorSubestablecimientoProvider =
     FutureProvider.family<List<Salon>, String>((ref, idSubestablecimiento) async {
   final response = await supabase
@@ -108,7 +109,7 @@ final salonesPorSubestablecimientoProvider =
   return lista;
 });
 
-// ✅ Obtener IDs de subestablecimientos por establecimiento
+// Obtener lista de IDs de subestablecimientos por establecimiento
 final subestablecimientosPorEstablecimientoProvider =
     FutureProvider.family<List<String>, String>((ref, idEstablecimiento) async {
   final response = await supabase
@@ -120,7 +121,7 @@ final subestablecimientosPorEstablecimientoProvider =
   return ids;
 });
 
-// ✅ Filtro por establecimiento (requiere tener relación subestablecimiento - establecimiento)
+// Filtro por establecimiento: filtra los salones con subestablecimientos relacionados
 final salonesPorEstablecimientoProvider =
     FutureProvider.family<List<Salon>, String>((ref, idEstablecimiento) async {
   final idsSubestablecimientos = await ref
@@ -130,4 +131,59 @@ final salonesPorEstablecimientoProvider =
   return todosSalones
       .where((s) => idsSubestablecimientos.contains(s.idSubestablecimiento))
       .toList();
+});
+
+// Nuevo: Provider que filtra salones según el usuario logueado y su rol
+final salonesFiltradosPorUsuarioProvider = FutureProvider<List<Salon>>((ref) async {
+  try {
+    final usuario = await ref.read(usuarioActualProvider.future);
+    if (usuario == null) return [];
+
+    // Obtener nombre del rol desde idRol (cachear o consultar tabla roles)
+    final rolResponse = await supabase
+        .from('roles')
+        .select('nombre')
+        .eq('id', usuario.idRol)
+        .single();
+
+    final rolNombre = (rolResponse as Map<String, dynamic>)['nombre']?.toLowerCase() ?? '';
+
+    if (rolNombre == 'administrador') {
+      final response = await supabase
+          .from('salones')
+          .select('id, id_subestablecimiento, nombre_salon, capacidad_mesas, capacidad_sillas, descripcion, created_at')
+          .order('created_at', ascending: false);
+
+      if (response is List) {
+        return response.map((e) => Salon.fromMap(e as Map<String, dynamic>)).toList();
+      }
+      return [];
+    }
+
+    if (usuario.idEstablecimiento != null) {
+      final idsSubestablecimientos = await ref
+          .read(subestablecimientosPorEstablecimientoProvider(usuario.idEstablecimiento!).future);
+
+      if (idsSubestablecimientos.isEmpty) return [];
+
+      // El filtro in con el método filter y string con paréntesis
+      final filtroIds = idsSubestablecimientos.map((e) => "'$e'").join(',');
+
+      final response = await supabase
+          .from('salones')
+          .select('id, id_subestablecimiento, nombre_salon, capacidad_mesas, capacidad_sillas, descripcion, created_at')
+          .filter('id_subestablecimiento', 'in', '($filtroIds)')
+          .order('created_at', ascending: false);
+
+      if (response is List) {
+        return response.map((e) => Salon.fromMap(e as Map<String, dynamic>)).toList();
+      }
+      return [];
+    }
+
+    return [];
+  } catch (e, st) {
+    print('Error en salonesFiltradosPorUsuarioProvider: $e\n$st');
+    return [];
+  }
 });

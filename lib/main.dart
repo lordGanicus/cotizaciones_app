@@ -28,7 +28,7 @@ Widget build(BuildContext context) {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       colorScheme: ColorScheme.light(
-        primary: AppColors.hotelColors['Rey Palac']!,
+        primary: AppColors.hotelColors['Rey Palac']!, 
         secondary: AppColors.hotelColors['Madero']!,
         surface: Colors.white,
         background: const Color(0xFFF8F9FA),

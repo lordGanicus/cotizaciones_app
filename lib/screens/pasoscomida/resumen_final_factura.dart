@@ -8,12 +8,14 @@ class ResumenFinalCotizacionComidaPage extends StatefulWidget {
   final String idCotizacion;
   final String nombreCliente;
   final String ciCliente;
+  final String? idSubestablecimiento;
 
   const ResumenFinalCotizacionComidaPage({
     Key? key,
     required this.idCotizacion,
     required this.nombreCliente,
     required this.ciCliente,
+    this.idSubestablecimiento,
   }) : super(key: key);
 
   @override
@@ -23,7 +25,6 @@ class ResumenFinalCotizacionComidaPage extends StatefulWidget {
 
 class _ResumenFinalCotizacionComidaPageState
     extends State<ResumenFinalCotizacionComidaPage> {
-  // Colores del diseño
   static const Color primaryGreen = Color(0xFF00B894);
   static const Color darkBlue = Color(0xFF2D4059);
   static const Color lightBackground = Color(0xFFFAFAFA);
@@ -69,9 +70,13 @@ class _ResumenFinalCotizacionComidaPageState
           .single();
 
       nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
-      final idSubestablecimiento = usuarioResp['id_subestablecimiento'];
 
-      if (idSubestablecimiento == null) throw 'Subestablecimiento no encontrado';
+      // Usar el idSubestablecimiento pasado como parámetro si está disponible
+      final idSubestablecimiento =
+          widget.idSubestablecimiento ?? usuarioResp['id_subestablecimiento'];
+
+      if (idSubestablecimiento == null)
+        throw 'Subestablecimiento no encontrado';
 
       // Obtener datos del SUBestablecimiento
       final subestablecimientoResp = await supabase
@@ -82,7 +87,8 @@ class _ResumenFinalCotizacionComidaPageState
 
       nombreSubestablecimiento = subestablecimientoResp['nombre'] as String?;
       logoSubestablecimiento = subestablecimientoResp['logotipo'] as String?;
-      membreteSubestablecimiento = subestablecimientoResp['membrete'] as String?;
+      membreteSubestablecimiento =
+          subestablecimientoResp['membrete'] as String?;
 
       // Obtener datos de la cotización
       final cotizacionResp = await supabase
@@ -291,7 +297,8 @@ class _ResumenFinalCotizacionComidaPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Encabezado con logo
-                      if (logoSubestablecimiento != null && logoSubestablecimiento!.isNotEmpty)
+                      if (logoSubestablecimiento != null &&
+                          logoSubestablecimiento!.isNotEmpty)
                         Center(
                           child: Container(
                             decoration: BoxDecoration(
@@ -348,12 +355,15 @@ class _ResumenFinalCotizacionComidaPageState
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Cotización N° ${widget.idCotizacion}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: darkBlue,
+                                Flexible(
+                                  child: Text(
+                                    'Cotización N° ${widget.idCotizacion.length > 8 ? '${widget.idCotizacion.substring(0, 8)}...' : widget.idCotizacion}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: darkBlue,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
@@ -366,10 +376,16 @@ class _ResumenFinalCotizacionComidaPageState
                             ),
                             const SizedBox(height: 16),
                             _buildInfoRow('Cliente:', widget.nombreCliente),
-                            _buildInfoRow('CI/NIT:', widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
+                            _buildInfoRow(
+                                'CI/NIT:',
+                                widget.ciCliente.isEmpty
+                                    ? 'No especificado'
+                                    : widget.ciCliente),
                             const SizedBox(height: 8),
-                            _buildInfoRow('Estado:', cotizacionData?['estado'] ?? 'N/D'),
-                            _buildInfoRow('Fecha creación:', formatFecha(cotizacionData?['fecha_creacion'])),
+                            _buildInfoRow(
+                                'Estado:', cotizacionData?['estado'] ?? 'N/D'),
+                            _buildInfoRow('Fecha creación:',
+                                formatFecha(cotizacionData?['fecha_creacion'])),
                           ],
                         ),
                       ),
@@ -470,9 +486,11 @@ class _ResumenFinalCotizacionComidaPageState
                               ),
                               // Filas de la tabla
                               ...items.map((item) {
-                                final descripcion = item['descripcion'] ?? 'Sin descripción';
+                                final descripcion =
+                                    item['descripcion'] ?? 'Sin descripción';
                                 final cantidad = item['cantidad'] ?? 0;
-                                final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
+                                final precioUnitario =
+                                    (item['precio_unitario'] ?? 0).toDouble();
                                 final subtotal = cantidad * precioUnitario;
 
                                 return Container(

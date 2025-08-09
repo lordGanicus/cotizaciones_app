@@ -108,7 +108,7 @@ Future<Uint8List> generarPdfCotizacionComida({
                         ],
                       ),
                       pw.Text(
-                        'Ref.: Cotización de Servicios de Catering',
+                        'Ref.: Cotización de Servicios Restaurante',
                         style: pw.TextStyle(
                             fontStyle: pw.FontStyle.italic,
                             fontWeight: pw.FontWeight.bold),
@@ -116,17 +116,32 @@ Future<Uint8List> generarPdfCotizacionComida({
                     ],
                   ),
 
-                  pw.SizedBox(height: 24),
+                 pw.SizedBox(height: 24),
                   pw.Text('Estimado(a):', style: estiloNegrita),
                   pw.SizedBox(height: 8),
                   pw.Text(
-                    'Nuestro servicio de catering ofrece una experiencia culinaria excepcional, con menús personalizados y de la más alta calidad, adaptándose a sus necesidades específicas.',
+                    'Gracias por confiar en nosotros para la realización de su evento. Nuestro restaurante ha sido cuidadosamente diseñado para ofrecerle un ',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
+                  pw.RichText(
+                    textAlign: pw.TextAlign.justify,
+                    text: pw.TextSpan(
+                      children: [
+                        pw.TextSpan(
+                          text: 'ambiente exclusivo, cálido y privado',
+                          style: estiloNegrita,
+                        ),
+                        pw.TextSpan(
+                          text: ', perfecto para todo tipo de ocasión: desde celebraciones familiares hasta eventos empresariales, cenas conmemorativas o encuentros especiales.',
+                          style: estiloNormal,
+                        ),
+                      ],
+                    ),
+                  ),
                   pw.SizedBox(height: 16),
                   pw.Text(
-                    'Presentamos a continuación el detalle de la cotización para su evento:',
+                    'Le presentamos, a continuación, los aspectos destacados según sus requerimientos.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
@@ -277,45 +292,75 @@ pw.Widget _cell(String text) {
 
 List<pw.Widget> _condicionesGeneralesCatering(
     pw.TextStyle estiloNegrita, pw.TextStyle estiloNormal) {
-  final condiciones = [
+  final condiciones = <Map<String, dynamic>>[
     {
-      'titulo': 'Validez de la cotización:',
-      'contenido': 'Esta propuesta es válida por 15 días calendario a partir de la fecha de emisión.'
+      'titulo': 'Horarios establecidos:',
+      'contenido': [
+        'Check-in: Desde las 15:00 hrs',
+        'Check-out: Hasta las 12:00 hrs'
+      ]
     },
     {
-      'titulo': 'Horario de servicio:',
-      'contenido': 'El horario de catering será coordinado previamente con el cliente.'
+      'titulo': 'Formas de pago aceptadas:',
+      'contenido': [
+        'Transferencia bancaria, tarjetas de crédito o débito, y efectivo.',
+        'La reserva será válida tras la confirmación del pago.'
+      ]
     },
     {
-      'titulo': 'Política de cancelación:',
-      'contenido': 'Cancelaciones con menos de 48 horas de anticipación incurrirán en un cargo del 30%.'
-    },
-    {
-      'titulo': 'Personal requerido:',
-      'contenido': 'Incluye 1 chef y 2 meseros por cada 50 invitados.'
+      'titulo': 'Política de cancelaciones:',
+      'contenido': [
+        'Cancelaciones con un mínimo de 48 horas antes del evento no generan penalización.',
+        'Posteriores a este plazo están sujetas a cargos por cancelación.'
+      ]
     },
     {
       'titulo': 'Modificaciones:',
-      'contenido': 'Cualquier cambio en el menú deberá ser notificado con 72 horas de anticipación.'
+      'contenido': [
+        'Cualquier cambio en los servicios deberá ser notificado y aprobado con antelación.'
+      ]
     },
     {
-      'titulo': 'Servicio adicional:',
-      'contenido': 'Decoración y montaje disponible con costo adicional.'
+      'titulo': 'Responsabilidades del cliente:',
+      'contenido': [
+        'El cliente se compromete a respetar las normas del hotel y cuidar las instalaciones.',
+        'Cualquier daño podrá generar cargos adicionales.'
+      ]
+    },
+    {
+      'titulo': 'Atención personalizada:',
+      'contenido': [
+        'Nuestro equipo estará disponible para acompañarlo en todo el proceso y asegurar el éxito de su evento.',
+        'Le agradecemos por elegirnos y quedamos atentos a cualquier requerimiento que contribuya al éxito de su evento en nuestro restaurante.',
+        'Atentamente:'
+      ]
     },
   ];
 
   return condiciones.expand((c) {
     return [
-      pw.Bullet(text: c['titulo']!, style: estiloNegrita),
+      pw.Bullet(text: c['titulo'] as String, style: estiloNegrita),
       pw.Padding(
         padding: const pw.EdgeInsets.only(left: 14),
-        child: pw.Text(c['contenido']!, style: estiloNormal),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: (c['contenido'] as List<String>)
+              .map((sub) => pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('▪ ', style: estiloNormal),
+                      pw.Expanded(
+                        child: pw.Text(sub, style: estiloNormal),
+                      ),
+                    ],
+                  ))
+              .toList(),
+        ),
       ),
       pw.SizedBox(height: 18),
     ];
   }).toList();
 }
-
 Future<Uint8List> _networkImageToBytes(String url) async {
   final response = await http.get(Uri.parse(url));
   if (response.statusCode == 200) {

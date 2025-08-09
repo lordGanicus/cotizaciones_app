@@ -35,11 +35,21 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
   bool showCreateDialog = false;
   bool showManageDialog = false;
   final TextEditingController _searchController = TextEditingController();
+  
+  // Variables para el selector de establecimientos
+  List<Map<String, dynamic>> establecimientosDisponibles = [];
+  Map<String, dynamic>? establecimientoSeleccionado;
+  String? establecimientoSeleccionadoId; // ← NUEVA VARIABLE
+  bool cargandoEstablecimientos = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarInformacion();
+    _cargarInformacion().then((_) {
+      if (rolUsuario?['nombre'] == 'Administrador') {
+        _cargarEstablecimientosDisponibles();
+      }
+    });
     _searchController.addListener(_filtrarCotizaciones);
   }
 
@@ -47,6 +57,59 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Método para cargar los establecimientos disponibles
+  Future<void> _cargarEstablecimientosDisponibles() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    setState(() => cargandoEstablecimientos = true);
+    
+    try {
+      final response = await supabase.from('establecimientos').select('*');
+      
+      setState(() {
+        establecimientosDisponibles = List<Map<String, dynamic>>.from(response);
+        if (establecimientosDisponibles.isNotEmpty) {
+          establecimientoSeleccionado = hotelUnico ?? establecimientosDisponibles.first;
+          establecimientoSeleccionadoId = establecimientoSeleccionado?['id']; // ← Asignar ID inicial
+        }
+      });
+    } catch (e) {
+      print('Error al cargar establecimientos: $e');
+    } finally {
+      setState(() => cargandoEstablecimientos = false);
+    }
+  }
+
+  // Método para cambiar de establecimiento
+  Future<void> _cambiarEstablecimiento(Map<String, dynamic> nuevoEstablecimiento) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    setState(() => cargandoEstablecimientos = true);
+    
+    try {
+      await supabase.from('usuarios')
+        .update({'id_establecimiento': nuevoEstablecimiento['id']})
+        .eq('id', user.id);
+
+      setState(() {
+        establecimientoSeleccionado = nuevoEstablecimiento;
+        establecimientoSeleccionadoId = nuevoEstablecimiento['id']; // ← Actualizar ID
+        hotelUnico = nuevoEstablecimiento;
+      });
+
+      await _cargarInformacion();
+    } catch (e) {
+      print('Error al cambiar establecimiento: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al cambiar de establecimiento')),
+      );
+    } finally {
+      setState(() => cargandoEstablecimientos = false);
+    }
   }
 
   void _filtrarCotizaciones() {
@@ -564,9 +627,81 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Selector de establecimiento para administrador
+                      if (isAdmin && establecimientosDisponibles.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF2D4059), width: 1),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: establecimientoSeleccionadoId,
+                              underline: const SizedBox(),
+                              icon: cargandoEstablecimientos
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
+                              items: establecimientosDisponibles.map((establecimiento) {
+                                return DropdownMenuItem<String>(
+                                  value: establecimiento['id'],
+                                  child: Text(
+                                    establecimiento['nombre'] ?? 'Sin nombre',
+                                    style: const TextStyle(color: Color(0xFF2D4059)),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: cargandoEstablecimientos
+                                  ? null
+                                  : (nuevoId) async {
+                                      if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
+                                        final nuevoEstablecimiento = establecimientosDisponibles
+                                            .firstWhere((e) => e['id'] == nuevoId);
+
+                                        final confirmar = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Confirmar cambio'),
+                                            content: Text(
+                                              '¿Estás seguro de cambiar al establecimiento ${nuevoEstablecimiento['nombre']}?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Cancelar'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: const Text('Aceptar'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (confirmar == true) {
+                                          setState(() {
+                                            establecimientoSeleccionadoId = nuevoId;
+                                            establecimientoSeleccionado = nuevoEstablecimiento;
+                                          });
+                                          await _cambiarEstablecimiento(nuevoEstablecimiento);
+                                        }
+                                      }
+                                    },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+
                       // Logo
-                      if (hotelUnico != null &&
-                          hotelUnico!['logotipo'] != null) ...[
+                      if (hotelUnico != null && hotelUnico!['logotipo'] != null) ...[
                         Center(
                           child: Container(
                             width: 100,
@@ -671,17 +806,16 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                         ),
                       ] else ...[
                         ...cotizacionesFiltradas
-                            .map((cotizacion) =>
-                                _buildCotizacionItem(cotizacion))
+                            .map((cotizacion) => _buildCotizacionItem(cotizacion))
                             .toList(),
                       ],
 
-                      const SizedBox(
-                          height: 120), // Espacio para los botones flotantes
+                      const SizedBox(height: 120), // Espacio para los botones flotantes
                     ],
                   ),
                 ),
-              ),
+              )
+
             ],
           ),
 
@@ -732,8 +866,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                       ),
                     ),
                   ),
-                  if (isAdmin ||
-                      isGerente) // Solo muestra el botón de gestionar para admin/gerente
+                  if (isAdmin || isGerente)
                     Expanded(
                       child: Material(
                         color: showManageDialog

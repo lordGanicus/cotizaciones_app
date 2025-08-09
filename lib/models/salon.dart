@@ -28,4 +28,9 @@ class Salon {
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
+    Map<String, dynamic> toMap() => {
+    // ... otros campos ...
+    'id_subestablecimiento': idSubestablecimiento,
+  };
+  
 }

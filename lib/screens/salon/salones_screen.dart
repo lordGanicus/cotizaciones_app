@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/salon.dart';
 import '../../providers/salones_provider.dart';
+import '../../providers/usuario_provider.dart'; // para usuarioActualProvider y filtrado
 import 'salon_form.dart';
 
 class SalonesScreen extends ConsumerWidget {
@@ -14,7 +15,8 @@ class SalonesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salonesAsync = ref.watch(salonesProvider);
+    // Usamos el provider que filtra según el usuario logueado
+    final salonesAsync = ref.watch(salonesFiltradosPorUsuarioProvider);
 
     return Scaffold(
       backgroundColor: _fondoClaro,
@@ -23,6 +25,19 @@ class SalonesScreen extends ConsumerWidget {
         title: const Text('Salones'),
         centerTitle: true,
         elevation: 4,
+        actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              return IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Actualizar',
+                onPressed: () {
+                  ref.refresh(salonesFiltradosPorUsuarioProvider);
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: salonesAsync.when(
         data: (salones) {
@@ -43,9 +58,14 @@ class SalonesScreen extends ConsumerWidget {
               final salon = salones[index];
               return Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   title: Text(
                     salon.nombre,
                     style: TextStyle(
@@ -66,6 +86,8 @@ class SalonesScreen extends ConsumerWidget {
                           context: context,
                           builder: (_) => SalonForm(salon: salon),
                         );
+                        // Refrescar la lista después de editar
+                        ref.refresh(salonesFiltradosPorUsuarioProvider);
                       } else if (value == 'eliminar') {
                         final confirmar = await showDialog<bool>(
                           context: context,
@@ -74,11 +96,13 @@ class SalonesScreen extends ConsumerWidget {
                               '¿Eliminar salón?',
                               style: TextStyle(color: _azulOscuro),
                             ),
-                            content: const Text('Esta acción no se puede deshacer.'),
+                            content:
+                                const Text('Esta acción no se puede deshacer.'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: Text('Cancelar', style: TextStyle(color: _azulOscuro)),
+                                child: Text('Cancelar',
+                                    style: TextStyle(color: _azulOscuro)),
                               ),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -92,13 +116,20 @@ class SalonesScreen extends ConsumerWidget {
                         );
 
                         if (confirmar == true) {
-                          await ref.read(salonesProvider.notifier).eliminarSalon(salon.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Salón eliminado'),
-                              backgroundColor: _verdeMenta,
-                            ),
-                          );
+                          await ref
+                              .read(salonesProvider.notifier)
+                              .eliminarSalon(salon.id);
+                          // Refrescar la lista después de eliminar
+                          ref.refresh(salonesFiltradosPorUsuarioProvider);
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Salón eliminado'),
+                                backgroundColor: _verdeMenta,
+                              ),
+                            );
+                          }
                         }
                       }
                     },
@@ -116,7 +147,7 @@ class SalonesScreen extends ConsumerWidget {
         error: (error, _) => Center(
           child: Text(
             'Error: $error',
-            style: TextStyle(color: Colors.red),
+            style: const TextStyle(color: Colors.red),
           ),
         ),
       ),
@@ -126,7 +157,10 @@ class SalonesScreen extends ConsumerWidget {
           showDialog(
             context: context,
             builder: (_) => const SalonForm(),
-          );
+          ).then((_) {
+            // Refrescar después de agregar un salón
+            ref.refresh(salonesFiltradosPorUsuarioProvider);
+          });
         },
         icon: const Icon(Icons.add),
         label: const Text('Agregar salón'),

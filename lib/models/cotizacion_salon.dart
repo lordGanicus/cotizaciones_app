@@ -39,11 +39,13 @@ class ItemSalon {
   final int participantes;
   final String tipoArmado;
   final double precioSalonTotal;
+  final String idSubestablecimiento;
   final List<Map<String, dynamic>> serviciosSeleccionados; // Listado de servicios con id, nombre, precio, etc.
   final List<ItemAdicional> itemsAdicionales;
 
   ItemSalon({
     required this.idUsuario,
+    required this.idSubestablecimiento,
     required this.idSalon,
     required this.nombreSalon,
     required this.capacidad,
@@ -72,10 +74,12 @@ class ItemSalon {
     String? tipoEvento,
     DateTime? fechaEvento,
     DateTime? horaInicio,
+     String? idSubestablecimiento,
     DateTime? horaFin,
     int? participantes,
     String? tipoArmado,
     double? precioSalonTotal,
+    
     List<Map<String, dynamic>>? serviciosSeleccionados,
     List<ItemAdicional>? itemsAdicionales,
   }) {
@@ -84,6 +88,7 @@ class ItemSalon {
       idSalon: idSalon ?? this.idSalon,
       nombreSalon: nombreSalon ?? this.nombreSalon,
       capacidad: capacidad ?? this.capacidad,
+      idSubestablecimiento: idSubestablecimiento ?? this.idSubestablecimiento,
       descripcion: descripcion ?? this.descripcion,
       nombreCliente: nombreCliente ?? this.nombreCliente,
       ciCliente: ciCliente ?? this.ciCliente,
@@ -115,6 +120,7 @@ class ItemSalon {
         'tipo_armado': tipoArmado,
         'precio_salon_total': precioSalonTotal,
         'servicios_seleccionados': serviciosSeleccionados,
+        'id_subestablecimiento': idSubestablecimiento,
         'items_adicionales': itemsAdicionales.map((e) => e.toMap()).toList(),
       };
 
@@ -132,6 +138,7 @@ class ItemSalon {
         horaFin: DateTime.parse(map['hora_fin']),
         participantes: map['participantes'],
         tipoArmado: map['tipo_armado'],
+        idSubestablecimiento: map['id_subestablecimiento'],
         precioSalonTotal: (map['precio_salon_total'] as num).toDouble(),
         serviciosSeleccionados: List<Map<String, dynamic>>.from(map['servicios_seleccionados']),
         itemsAdicionales: List<ItemAdicional>.from(

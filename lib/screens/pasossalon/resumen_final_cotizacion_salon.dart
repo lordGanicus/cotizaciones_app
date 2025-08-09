@@ -9,12 +9,14 @@ class ResumenFinalCotizacionSalonPage extends StatefulWidget {
   final String idCotizacion;
   final String nombreCliente;
   final String ciCliente;
+  final String? idSubestablecimiento;
 
   const ResumenFinalCotizacionSalonPage({
     Key? key,
     required this.idCotizacion,
     required this.nombreCliente,
     required this.ciCliente,
+    this.idSubestablecimiento,
   }) : super(key: key);
 
   @override
@@ -48,12 +50,20 @@ class _ResumenFinalCotizacionSalonPageState
   String? fechaEvento;
   String? horaInicio;
   String? horaFin;
+  String nombreSalon = '';
+  String tipoArmado = '';
+  int participantes = 0;
 
   @override
   void initState() {
     super.initState();
     supabase = Supabase.instance.client;
     _loadData();
+  }
+
+  String _formatId(String id) {
+    if (id.length <= 8) return id;
+    return '${id.substring(0, 8)}...';
   }
 
   Future<void> _loadData() async {
@@ -74,10 +84,11 @@ class _ResumenFinalCotizacionSalonPageState
           .single();
 
       nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
-      final idSubestablecimiento = usuarioResp['id_subestablecimiento'];
+      
+      // Usar el idSubestablecimiento pasado como parámetro si está disponible
+      final idSubestablecimiento = widget.idSubestablecimiento ?? usuarioResp['id_subestablecimiento'];
 
-      if (idSubestablecimiento == null)
-        throw 'Subestablecimiento no encontrado';
+      if (idSubestablecimiento == null) throw 'Subestablecimiento no encontrado';
 
       // Obtener datos del SUBestablecimiento
       final subestablecimientoResp = await supabase
@@ -88,8 +99,7 @@ class _ResumenFinalCotizacionSalonPageState
 
       nombreSubestablecimiento = subestablecimientoResp['nombre'] as String?;
       logoSubestablecimiento = subestablecimientoResp['logotipo'] as String?;
-      membreteSubestablecimiento =
-          subestablecimientoResp['membrete'] as String?;
+      membreteSubestablecimiento = subestablecimientoResp['membrete'] as String?;
 
       // Obtener datos de la cotización
       final cotizacionResp = await supabase
@@ -114,20 +124,27 @@ class _ResumenFinalCotizacionSalonPageState
           final detalles = item['detalles'];
           if (detalles is Map) {
             capacidadEsperada = detalles['capacidad_sillas'] ?? 0;
-            fechaEvento = detalles['fecha_evento'];
+            fechaEvento = detalles['fecha'];
             horaInicio = detalles['hora_inicio'];
             horaFin = detalles['hora_fin'];
+            nombreSalon = detalles['nombre_salon'] ?? '';
+            tipoArmado = detalles['tipo_armado'] ?? '';
+            participantes = detalles['participantes'] ?? 0;
           } else if (detalles is String) {
             try {
               final decoded = jsonDecode(detalles);
               if (decoded is Map) {
                 capacidadEsperada = decoded['capacidad_sillas'] ?? 0;
-                fechaEvento = decoded['fecha_evento'];
+                fechaEvento = decoded['fecha'];
                 horaInicio = decoded['hora_inicio'];
                 horaFin = decoded['hora_fin'];
+                nombreSalon = decoded['nombre_salon'] ?? '';
+                tipoArmado = decoded['tipo_armado'] ?? '';
+                participantes = decoded['participantes'] ?? 0;
               }
             } catch (_) {}
           }
+          break; // Solo necesitamos el primer item de tipo salon
         }
       }
 
@@ -139,8 +156,7 @@ class _ResumenFinalCotizacionSalonPageState
           totalItem = val.toDouble();
         } else {
           final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
-          final precio =
-              double.tryParse(item['precio_unitario'].toString()) ?? 0;
+          final precio = double.tryParse(item['precio_unitario'].toString()) ?? 0;
           totalItem = cantidad * precio;
         }
         return prev + totalItem;
@@ -176,8 +192,7 @@ class _ResumenFinalCotizacionSalonPageState
   Future<void> _generatePDF() async {
     try {
       final pdfBytes = await generarPdfCotizacionSalon(
-        nombreSubestablecimiento:
-            nombreSubestablecimiento ?? 'Salón de Eventos',
+        nombreSubestablecimiento: nombreSubestablecimiento ?? 'Salón de Eventos',
         logoSubestablecimiento: logoSubestablecimiento,
         membreteSubestablecimiento: membreteSubestablecimiento,
         idCotizacion: widget.idCotizacion,
@@ -191,6 +206,9 @@ class _ResumenFinalCotizacionSalonPageState
         fechaEvento: fechaEvento,
         horaInicio: horaInicio,
         horaFin: horaFin,
+        nombreSalon: nombreSalon,
+        tipoArmado: tipoArmado,
+        participantes: participantes,
       );
 
       await Printing.layoutPdf(
@@ -397,7 +415,7 @@ class _ResumenFinalCotizacionSalonPageState
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Cotización N° ${widget.idCotizacion}',
+                                  'Cotización N° ${_formatId(widget.idCotizacion)}',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -419,6 +437,8 @@ class _ResumenFinalCotizacionSalonPageState
                                 widget.ciCliente.isEmpty
                                     ? 'No especificado'
                                     : widget.ciCliente),
+                            if (nombreSalon.isNotEmpty)
+                              _buildInfoRow('Salón:', nombreSalon),
                             if (capacidadEsperada > 0)
                               _buildInfoRow(
                                   'Capacidad:', '$capacidadEsperada personas'),
@@ -428,6 +448,10 @@ class _ResumenFinalCotizacionSalonPageState
                             if (horaInicio != null && horaFin != null)
                               _buildInfoRow('Horario:',
                                   '${formatHora(horaInicio)} - ${formatHora(horaFin)}'),
+                            if (tipoArmado.isNotEmpty)
+                              _buildInfoRow('Tipo de armado:', tipoArmado),
+                            if (participantes > 0)
+                              _buildInfoRow('Participantes:', '$participantes personas'),
                             const SizedBox(height: 8),
                             _buildInfoRow(
                                 'Estado:', cotizacionData?['estado'] ?? 'N/D'),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/cotizacion_habitacion.dart';
 import '../../providers/cotizacion_habitacion_provider.dart';
 import 'crear_cotizacion_habitacion_step4.dart';
+import 'seleccionar_habitacion_modal.dart';
 
 class PasoResumenHabitacionesPage extends ConsumerWidget {
   final String idCotizacion;
@@ -69,7 +70,11 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: Agregar funcionalidad para agregar habitación
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const SeleccionarHabitacionModal(),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: darkBlue,

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/itemComida.dart';
 import '../../providers/cotizacion_comida_provider.dart';
 import 'resumen_final_factura.dart';
+import 'crear_cotizacion_comida_step1.dart';
 
 class CrearCotizacionComidaStep4 extends ConsumerStatefulWidget {
   final String idCotizacion;
@@ -117,6 +118,7 @@ class _CrearCotizacionComidaStep4State
             idCotizacion: idCotizacion,
             nombreCliente: cotizacion.nombreCliente,
             ciCliente: cotizacion.ciCliente,
+            idSubestablecimiento: widget.idSubestablecimiento, /********************************* Añadir este parámetro*/
           ),
         ),
       );
