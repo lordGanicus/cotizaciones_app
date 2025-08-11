@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Para filtros
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -130,6 +131,11 @@ class _CrearCotizacionComidaStep1State
     }
   }
 
+  bool _validarNombre(String nombre) {
+    final regex = RegExp(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*$');
+    return regex.hasMatch(nombre);
+  }
+
   void _guardarYContinuar() {
     if (_formKey.currentState?.validate() ?? false) {
       if (_fechaEvento == null || _horaEvento == null) {
@@ -141,8 +147,26 @@ class _CrearCotizacionComidaStep1State
         return;
       }
 
-      final nombre = _nombreController.text.trim();
+      // Capitalizar el nombre completo:
+      String nombre = _nombreController.text.trim();
+      nombre = nombre
+          .split(' ')
+          .where((p) => p.isNotEmpty)
+          .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
+          .join(' ');
+
+      if (!_validarNombre(nombre)) {
+        _showError(
+            'Ingrese un nombre válido (solo letras y espacios, con mayúscula inicial en cada palabra)');
+        return;
+      }
+
       final ci = _ciController.text.trim();
+
+      if (ci.isNotEmpty && !RegExp(r'^[0-9]+$').hasMatch(ci)) {
+        _showError('El CI/NIT solo puede contener números');
+        return;
+      }
 
       final notifier = ref.read(cotizacionComidaProvider.notifier);
 
@@ -206,7 +230,7 @@ class _CrearCotizacionComidaStep1State
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Datos del Cliente y Evento'),
+        title: const Text('Datos del cliente y evento'),
         backgroundColor: darkBlue,
         centerTitle: true,
       ),
@@ -238,7 +262,7 @@ class _CrearCotizacionComidaStep1State
                         if (value == null) return;
                         final seleccionado = _subestablecimientos.firstWhere(
                           (e) => e['id'] == value,
-                          orElse: () => <String, String>{'nombre': ''}, // ✅ Corregido aquí
+                          orElse: () => <String, String>{'nombre': ''},
                         );
                         setState(() {
                           _selectedSubestablecimientoId = value;
@@ -261,6 +285,10 @@ class _CrearCotizacionComidaStep1State
                         prefixIcon: const Icon(Icons.person),
                       ),
                       textInputAction: TextInputAction.next,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                      ],
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'El nombre es obligatorio';
@@ -281,11 +309,17 @@ class _CrearCotizacionComidaStep1State
                         ),
                         prefixIcon: const Icon(Icons.badge),
                       ),
-                      keyboardType: TextInputType.text,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'El CI/NIT es obligatorio';
+                        }
+                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                          return 'Solo se permiten números';
                         }
                         if (value.trim().length < 5) {
                           return 'Ingrese un CI/NIT válido';
@@ -344,8 +378,8 @@ class _CrearCotizacionComidaStep1State
                       onPressed: _guardarYContinuar,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryGreen,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40, vertical: 16),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

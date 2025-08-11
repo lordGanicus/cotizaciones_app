@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:flutter/services.dart';
 import '../../models/cotizacion_salon.dart';
 import '../../models/salon.dart';
 import '../../providers/cotizacion_salon_provider.dart';
@@ -12,7 +12,7 @@ class Paso1CotizacionSalonPage extends ConsumerStatefulWidget {
   final String idCotizacion;
   final String idEstablecimiento;
   final String idUsuario;
-  final String? idSubestablecimiento; // nullable ahora
+  final String? idSubestablecimiento;
 
   const Paso1CotizacionSalonPage({
     Key? key,
@@ -60,6 +60,10 @@ class _Paso1CotizacionSalonPageState
   final Color textColor = const Color(0xFF2D4059);
   final Color secondaryTextColor = const Color(0xFF555555);
 
+  // Expresiones regulares para validación
+  final RegExp _nombreRegExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
+  final RegExp _tipoEventoRegExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$');
+
   @override
   void dispose() {
     _nombreController.dispose();
@@ -68,6 +72,28 @@ class _Paso1CotizacionSalonPageState
     _participantesController.dispose();
     _precioController.dispose();
     super.dispose();
+  }
+
+  // Función para capitalizar cada palabra del nombre
+  String _capitalizarNombreCompleto(String nombre) {
+    return nombre
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((palabra) =>
+            palabra[0].toUpperCase() + palabra.substring(1).toLowerCase())
+        .join(' ');
+  }
+
+  // Función para capitalizar el tipo de evento
+  String _capitalizarTipoEvento(String tipoEvento) {
+    return tipoEvento
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((palabra) =>
+            palabra[0].toUpperCase() + palabra.substring(1).toLowerCase())
+        .join(' ');
   }
 
   Future<void> _seleccionarFechaEvento(BuildContext context) async {
@@ -177,8 +203,56 @@ class _Paso1CotizacionSalonPageState
         return;
       }
 
+      // Validar que el evento dure al menos 30 minutos
+      if (fin.difference(inicio).inMinutes < 30) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                const Text('La duración mínima del evento debe ser de 30 minutos'),
+            backgroundColor: errorColor,
+          ),
+        );
+        return;
+      }
+
+      // Validar capacidad del salón
       final participantes = int.tryParse(_participantesController.text) ?? 0;
+      if (participantes <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('La cantidad de participantes debe ser mayor a cero'),
+            backgroundColor: errorColor,
+          ),
+        );
+        return;
+      }
+
+      if (_salonSeleccionado!.capacidadSillas < participantes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'La capacidad del salón (${_salonSeleccionado!.capacidadSillas}) es menor a los participantes ($participantes)'),
+            backgroundColor: errorColor,
+          ),
+        );
+        return;
+      }
+
       final precioSalon = double.tryParse(_precioController.text) ?? 0.0;
+      if (precioSalon <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('El precio total del salón debe ser mayor a cero'),
+            backgroundColor: errorColor,
+          ),
+        );
+        return;
+      }
+
+      // Capitalizar el nombre y tipo de evento antes de guardar
+      final nombreCliente = _capitalizarNombreCompleto(_nombreController.text);
+      final tipoEvento = _capitalizarTipoEvento(_tipoEventoController.text);
+      final ciCliente = _ciController.text.trim();
 
       final notifier = ref.read(cotizacionSalonProvider.notifier);
       final listaSalones = ref.read(cotizacionSalonProvider);
@@ -189,9 +263,9 @@ class _Paso1CotizacionSalonPageState
         nombreSalon: _salonSeleccionado!.nombre,
         capacidad: _salonSeleccionado!.capacidadSillas,
         descripcion: _salonSeleccionado!.descripcion ?? '',
-        nombreCliente: _nombreController.text.trim(),
-        ciCliente: _ciController.text.trim(),
-        tipoEvento: _tipoEventoController.text.trim(),
+        nombreCliente: nombreCliente,
+        ciCliente: ciCliente,
+        tipoEvento: tipoEvento,
         fechaEvento: _fechaEvento!,
         horaInicio: inicio,
         horaFin: fin,
@@ -200,7 +274,7 @@ class _Paso1CotizacionSalonPageState
         precioSalonTotal: precioSalon,
         serviciosSeleccionados: [],
         itemsAdicionales: [],
-    idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento,
+        idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento,
       );
 
       if (listaSalones.isEmpty) {
@@ -216,7 +290,7 @@ class _Paso1CotizacionSalonPageState
             idCotizacion: widget.idCotizacion,
             idEstablecimiento: widget.idEstablecimiento,
             idUsuario: widget.idUsuario,
-            idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento, // Pasa el subestablecimiento del salón
+            idSubestablecimiento: _salonSeleccionado!.idSubestablecimiento,
           ),
         ),
       );
@@ -316,7 +390,7 @@ class _Paso1CotizacionSalonPageState
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Cotización de Salón - Paso 1'),
+        title: const Text('Cotización de salón - Paso 1'),
         backgroundColor: darkBlue,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -351,16 +425,13 @@ class _Paso1CotizacionSalonPageState
                               style: TextStyle(color: secondaryTextColor),
                             );
                           }
-                          // *** ESTA ES LA MODIFICACION PRINCIPAL ***
                           if (_salonSeleccionado == null && salones.isNotEmpty) {
-                            // Asignar el primero para que el Dropdown no quede sin valor inicial
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               setState(() {
                                 _salonSeleccionado = salones.first;
                               });
                             });
                           }
-                          // *** FIN MODIFICACION ***
 
                           return DropdownButtonFormField<Salon>(
                             value: _salonSeleccionado,
@@ -418,16 +489,55 @@ class _Paso1CotizacionSalonPageState
                         controller: _nombreController,
                         decoration: _inputDecoration('Nombre del cliente'),
                         style: TextStyle(color: textColor),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Requerido' : null,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El nombre es obligatorio';
+                          }
+                          if (!_nombreRegExp.hasMatch(value.trim())) {
+                            return 'Solo se permiten letras y espacios';
+                          }
+                          if (value.trim().split(' ').length < 2) {
+                            return 'Ingrese al menos un nombre y un apellido';
+                          }
+                          return null;
+                        },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                        ],
+                        onChanged: (val) {
+                          final textoCapitalizado = _capitalizarNombreCompleto(val);
+                          if (val != textoCapitalizado) {
+                            final cursorPos = _nombreController.selection;
+                            _nombreController.value = TextEditingValue(
+                              text: textoCapitalizado,
+                              selection: cursorPos,
+                            );
+                          }
+                        },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _ciController,
                         decoration: _inputDecoration('CI o NIT'),
                         style: TextStyle(color: textColor),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Requerido' : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            signed: false, decimal: false),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El CI o NIT es obligatorio';
+                          }
+                          if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
+                            return 'Solo se permiten números en CI o NIT';
+                          }
+                          if (value.trim().length < 4) {
+                            return 'El CI/NIT debe tener al menos 4 dígitos';
+                          }
+                          return null;
+                        },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(15),
+                        ],
                       ),
                     ],
                   ),
@@ -454,8 +564,28 @@ class _Paso1CotizacionSalonPageState
                         controller: _tipoEventoController,
                         decoration: _inputDecoration('Tipo de evento'),
                         style: TextStyle(color: textColor),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Requerido' : null,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El tipo de evento es obligatorio';
+                          }
+                          if (!_tipoEventoRegExp.hasMatch(value.trim())) {
+                            return 'Solo se permiten letras, espacios y guiones';
+                          }
+                          return null;
+                        },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]')),
+                        ],
+                        onChanged: (val) {
+                          final textoCapitalizado = _capitalizarTipoEvento(val);
+                          if (val != textoCapitalizado) {
+                            final cursorPos = _tipoEventoController.selection;
+                            _tipoEventoController.value = TextEditingValue(
+                              text: textoCapitalizado,
+                              selection: cursorPos,
+                            );
+                          }
+                        },
                       ),
                       const SizedBox(height: 12),
                       _buildDateTimeButton(
@@ -496,8 +626,20 @@ class _Paso1CotizacionSalonPageState
                             _inputDecoration('Cantidad de participantes'),
                         keyboardType: TextInputType.number,
                         style: TextStyle(color: textColor),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Requerido' : null,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'La cantidad de participantes es obligatoria';
+                          }
+                          final n = int.tryParse(value.trim());
+                          if (n == null || n <= 0) {
+                            return 'Ingrese una cantidad válida mayor a cero';
+                          }
+                          return null;
+                        },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
@@ -536,8 +678,24 @@ class _Paso1CotizacionSalonPageState
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         style: TextStyle(color: textColor),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Requerido' : null,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El precio es obligatorio';
+                          }
+                          final precio = double.tryParse(value.trim());
+                          if (precio == null || precio <= 0) {
+                            return 'Ingrese un precio válido mayor a cero';
+                          }
+                          if (precio > 100000) {
+                            return 'El precio no puede exceder Bs 100,000';
+                          }
+                          return null;
+                        },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d{0,2}')),
+                          LengthLimitingTextInputFormatter(10),
+                        ],
                       ),
                     ],
                   ),

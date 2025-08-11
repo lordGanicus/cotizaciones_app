@@ -3,11 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
-import 'pasoscomida/crear_cotizacion_comida_step2.dart';
-import 'servicios/servicios_screen.dart';
-import 'refrigerios/refrigerios_screen.dart';
-import 'salon/salones_screen.dart';
-import 'habitaciones/habitaciones_screen.dart';
 import 'gestion_general_screen.dart';
 import 'pasossalon/crear_cotizacion_salon_step1.dart';
 import 'pasoEstablecimiento/pantalla_establecimientos.dart';

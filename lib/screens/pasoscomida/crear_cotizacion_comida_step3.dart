@@ -53,7 +53,9 @@ class CrearCotizacionComidaStep3 extends ConsumerWidget {
       final confirmado = await _confirmarEliminar(context);
       if (!confirmado) return;
 
-      ref.read(cotizacionComidaProvider.notifier).eliminarItemPorDescripcion(descripcion);
+      ref
+          .read(cotizacionComidaProvider.notifier)
+          .eliminarItemPorDescripcion(descripcion);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Ítem eliminado'),
@@ -128,19 +130,20 @@ class CrearCotizacionComidaStep3 extends ConsumerWidget {
                       ),
                       elevation: 2,
                       child: ListTile(
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         title: Text(
                           item.descripcion,
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                         subtitle: Text(
-                          'Cantidad: ${item.cantidad}   |   Precio unitario: \$${item.precioUnitario.toStringAsFixed(2)}\nSubtotal: \$${item.subtotal.toStringAsFixed(2)}',
+                          'Cantidad: ${item.cantidad}   |   Precio unitario: Bs ${item.precioUnitario.toStringAsFixed(2)}\nSubtotal: Bs ${item.subtotal.toStringAsFixed(2)}',
                           style: const TextStyle(fontSize: 14),
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
                           onPressed: () => _eliminarItem(item.descripcion),
                           tooltip: 'Eliminar ítem',
                         ),

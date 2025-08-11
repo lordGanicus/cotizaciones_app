@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/itemComida.dart';
 import '../../providers/cotizacion_comida_provider.dart';
-import 'crear_cotizacion_comida_step3.dart'; // Importa el paso 3 correcto
+import 'crear_cotizacion_comida_step3.dart';
 
 class CrearCotizacionComidaStep2 extends ConsumerStatefulWidget {
   final String idCotizacion;
@@ -31,10 +31,11 @@ class _CrearCotizacionComidaStep2State
   final TextEditingController _cantidadController = TextEditingController();
   final TextEditingController _precioController = TextEditingController();
 
-  // Colores según paleta salones
   final Color primaryGreen = const Color(0xFF00B894);
   final Color darkBlue = const Color(0xFF2D4059);
   final Color lightBackground = const Color(0xFFFAFAFA);
+
+  bool _intercambiarColores = false;
 
   @override
   void dispose() {
@@ -44,9 +45,17 @@ class _CrearCotizacionComidaStep2State
     super.dispose();
   }
 
+  String _capitalizarDescripcion(String texto) {
+    if (texto.isEmpty) return texto;
+    return texto[0].toUpperCase() + texto.substring(1);
+  }
+
   void _agregarItem() {
     if (_formKey.currentState?.validate() ?? false) {
-      final descripcion = _descripcionController.text.trim();
+      // Capitalizamos descripción
+      final descripcionRaw = _descripcionController.text.trim();
+      final descripcion = _capitalizarDescripcion(descripcionRaw);
+
       final cantidad = int.parse(_cantidadController.text.trim());
       final precioUnitario = double.parse(_precioController.text.trim());
 
@@ -62,9 +71,13 @@ class _CrearCotizacionComidaStep2State
       _cantidadController.clear();
       _precioController.clear();
 
+      setState(() {
+        _intercambiarColores = !_intercambiarColores;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Ítem agregado'),
+          content: const Text('Plato guardado'),
           backgroundColor: primaryGreen,
         ),
       );
@@ -87,10 +100,13 @@ class _CrearCotizacionComidaStep2State
 
   @override
   Widget build(BuildContext context) {
+    final guardarColor = _intercambiarColores ? darkBlue : primaryGreen;
+    final verListaColor = _intercambiarColores ? primaryGreen : darkBlue;
+
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
-        title: const Text('Agregar Platos / Almuerzo o Desayunos'),
+        title: const Text('Agregar platos / almuerzo o desayunos'),
         backgroundColor: darkBlue,
         centerTitle: true,
       ),
@@ -109,13 +125,20 @@ class _CrearCotizacionComidaStep2State
                   ),
                   prefixIcon: const Icon(Icons.restaurant_menu),
                 ),
-                textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'La descripción es obligatoria';
                   }
                   if (value.trim().length < 3) {
                     return 'Ingrese una descripción válida';
+                  }
+                  // Validar que comience con mayúscula y solo permita letras, números y espacios
+                  final texto = value.trim();
+                  if (!RegExp(r'^[A-ZÁÉÍÓÚÑ]').hasMatch(texto[0])) {
+                    return 'La descripción debe empezar con mayúscula';
+                  }
+                  if (!RegExp(r'^[A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s]+$').hasMatch(texto)) {
+                    return 'La descripción solo puede contener letras, números y espacios';
                   }
                   return null;
                 },
@@ -131,14 +154,13 @@ class _CrearCotizacionComidaStep2State
                   prefixIcon: const Icon(Icons.confirmation_number),
                 ),
                 keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'La cantidad es obligatoria';
                   }
                   final n = int.tryParse(value);
                   if (n == null || n <= 0) {
-                    return 'Ingrese una cantidad válida';
+                    return 'Ingrese una cantidad válida mayor a cero';
                   }
                   return null;
                 },
@@ -151,18 +173,18 @@ class _CrearCotizacionComidaStep2State
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  prefixIcon: const Icon(Icons.attach_money),
+                  prefixIcon: const Icon(Icons.monetization_on),
+                  prefixText: 'BS ',
                 ),
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                textInputAction: TextInputAction.done,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'El precio es obligatorio';
                   }
                   final d = double.tryParse(value);
                   if (d == null || d <= 0) {
-                    return 'Ingrese un precio válido';
+                    return 'Ingrese un precio válido mayor a cero';
                   }
                   return null;
                 },
@@ -170,13 +192,13 @@ class _CrearCotizacionComidaStep2State
               const SizedBox(height: 30),
               ElevatedButton.icon(
                 onPressed: _agregarItem,
-                icon: const Icon(Icons.add_circle_outline),
+                icon: const Icon(Icons.save),
                 label: const Text(
-                  'Agregar Plato',
+                  'Guardar',
                   style: TextStyle(fontSize: 18),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
+                  backgroundColor: guardarColor,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -192,13 +214,13 @@ class _CrearCotizacionComidaStep2State
                   style: TextStyle(fontSize: 16),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: darkBlue.withOpacity(0.7)),
+                  backgroundColor: verListaColor,
+                  foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  foregroundColor: darkBlue,
                 ),
               ),
             ],

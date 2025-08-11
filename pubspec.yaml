@@ -29,6 +29,12 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1 # <-- agrega aquí esta línea
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/iconLogo.png" # <-- ruta a tu icono
 
 flutter:
   uses-material-design: true
@@ -40,4 +46,5 @@ flutter:
     - .env
     - assets/imgLogin.png
     - assets/welcome.png
+    - assets/iconLogo.png
     - assets/fonts/acterum-signature-font.ttf
