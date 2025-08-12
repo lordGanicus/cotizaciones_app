@@ -274,7 +274,7 @@ class _SeleccionarHabitacionModalState extends ConsumerState<SeleccionarHabitaci
                                 Expanded(
                                   child: TextField(
                                     decoration: InputDecoration(
-                                      labelText: 'Cantidad',
+                                      labelText: 'Cantidad de hab.',
                                       labelStyle: TextStyle(color: textSecondary),
                                       floatingLabelStyle: TextStyle(color: primaryGreen),
                                       border: OutlineInputBorder(

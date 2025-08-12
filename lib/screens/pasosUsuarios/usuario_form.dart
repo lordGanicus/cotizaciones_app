@@ -27,7 +27,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
   String? idRol;
   String? idEstablecimiento;
   String? idSubestablecimiento;
-  List<String> otrosEstablecimientos = [];
 
   final supabase = Supabase.instance.client;
 
@@ -50,7 +49,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       idRol = u.idRol;
       idEstablecimiento = u.idEstablecimiento;
       idSubestablecimiento = u.idSubestablecimiento;
-      otrosEstablecimientos = List<String>.from(u.otrosEstablecimientos);
     }
   }
 
@@ -110,7 +108,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       backgroundColor: lightBackground,
       appBar: AppBar(
         backgroundColor: darkBlue,
-        title: Text(widget.usuarioEditar == null ? 'Crear Usuario' : 'Editar Usuario'),
+        title: Text(widget.usuarioEditar == null ? 'Crear usuario' : 'Editar usuario'),
       ),
       body: SafeArea(
         child: Form(
@@ -120,7 +118,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                buildLabel('CI'),
+               
                 TextFormField(
                   controller: ciController,
                   decoration: inputDecoration('CI'),
@@ -128,7 +126,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Nombre Completo'),
                 TextFormField(
                   controller: nombreController,
                   decoration: inputDecoration('Nombre completo'),
@@ -136,7 +133,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Celular'),
+               
                 TextFormField(
                   controller: celularController,
                   decoration: inputDecoration('Celular'),
@@ -144,7 +141,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Género'),
+               
                 DropdownButtonFormField<String>(
                   value: genero,
                   decoration: inputDecoration('Género'),
@@ -158,8 +155,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Email y password siempre visibles, pero password obligatorio solo al crear
-                buildLabel('Correo electrónico'),
+                // Email sin buildLabel duplicado
                 TextFormField(
                   controller: emailController,
                   decoration: inputDecoration('Correo electrónico'),
@@ -172,7 +168,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Contraseña'),
+                // Password sin buildLabel duplicado
                 TextFormField(
                   controller: passwordController,
                   decoration: inputDecoration('Contraseña'),
@@ -189,7 +185,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Rol'),
+               
                 rolesAsync.when(
                   data: (roles) => DropdownButtonFormField<String>(
                     value: idRol,
@@ -205,7 +201,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Establecimiento principal'),
+                
                 establecimientosAsync.when(
                   data: (lista) => DropdownButtonFormField<String>(
                     value: idEstablecimiento,
@@ -217,7 +213,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                       setState(() {
                         idEstablecimiento = val;
                         idSubestablecimiento = null;
-                        otrosEstablecimientos.remove(val);
                       });
                     },
                     validator: (v) => v == null ? 'Seleccione un establecimiento' : null,
@@ -227,7 +222,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                buildLabel('Subestablecimiento (opcional)'),
+                
                 subestablecimientosAsync.when(
                   data: (subs) => DropdownButtonFormField<String?>(
                     value: idSubestablecimiento,
@@ -242,37 +237,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, st) => Text('Error cargando subestablecimientos: $e'),
                 ),
-                const SizedBox(height: 20),
-
-                buildLabel('Otros establecimientos (opcional)'),
-                establecimientosAsync.when(
-                  data: (lista) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: lista
-                        .where((e) => e.id != idEstablecimiento)
-                        .map(
-                          (e) => CheckboxListTile(
-                            title: Text(e.nombre, style: TextStyle(color: darkBlue)),
-                            value: otrosEstablecimientos.contains(e.id),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            activeColor: primaryGreen,
-                            onChanged: (val) {
-                              setState(() {
-                                if (val == true) {
-                                  otrosEstablecimientos.add(e.id);
-                                } else {
-                                  otrosEstablecimientos.remove(e.id);
-                                }
-                              });
-                            },
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  loading: () => const SizedBox.shrink(),
-                  error: (e, st) => const SizedBox.shrink(),
-                ),
-
                 const SizedBox(height: 30),
 
                 ElevatedButton(
@@ -296,7 +260,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                         idRol: idRol!,
                         idEstablecimiento: idEstablecimiento!,
                         idSubestablecimiento: idSubestablecimiento,
-                        otrosEstablecimientos: otrosEstablecimientos,
+                        otrosEstablecimientos: [], // Ya eliminado
                         email: emailController.text.trim(),
                       );
 

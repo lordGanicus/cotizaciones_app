@@ -169,7 +169,16 @@ class Paso3CotizacionSalonPage extends ConsumerWidget {
                   TextFormField(
                     controller: descController,
                     decoration: _inputDecoration('Descripción'),
-                    validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Requerido';
+                      final trimmed = v.trim();
+                      if (trimmed.isEmpty) return 'Requerido';
+                      // Validar que inicie con mayúscula A-Z
+                      if (!RegExp(r'^[A-ZÁÉÍÓÚÜÑ]').hasMatch(trimmed)) {
+                        return 'La descripción debe iniciar con mayúscula';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

@@ -45,7 +45,7 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
       backgroundColor: lightBackground,
       appBar: AppBar(
         title: const Text(
-          'Resumen de Habitaciones',
+          'Resumen de habitaciones',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
@@ -91,7 +91,7 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
                   children: [
                     Icon(Icons.add, size: 20),
                     SizedBox(width: 8),
-                    Text('AGREGAR HABITACIÓN'),
+                    Text('Agregar habitacíon'),
                   ],
                 ),
               ),

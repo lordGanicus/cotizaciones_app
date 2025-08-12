@@ -235,7 +235,7 @@ class _CrearCotizacionHabitacionStep1State
                   const SizedBox(height: 32),
 
                   const Text(
-                    'Información del Cliente',
+                    'Información del cliente',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,

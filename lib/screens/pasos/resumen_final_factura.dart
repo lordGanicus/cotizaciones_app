@@ -7,6 +7,7 @@ import 'generador_pdf_habitacion.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ResumenFinalCotizacionHabitacionPage extends StatefulWidget {
   final String idCotizacion;
@@ -47,12 +48,41 @@ class _ResumenFinalCotizacionHabitacionPageState
   double totalFinal = 0;
   bool isLoading = true;
   String? error;
+  bool _isGeneratingPDF = false;
 
   @override
   void initState() {
     super.initState();
     supabase = Supabase.instance.client;
     _loadData();
+  }
+
+  // Bloqueo de retroceso
+  Future<bool> _onWillPop() async {
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Estás seguro?'),
+        content: const Text('Si regresas al inicio, perderás el progreso de esta cotización.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Regresar al inicio'),
+          ),
+        ],
+      ),
+    );
+    
+    if (shouldPop ?? false) {
+      // Navegar a hotel_selection.dart
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return false; // No permitir el pop normal
+    }
+    return false;
   }
 
   Future<void> _loadData() async {
@@ -106,11 +136,13 @@ class _ResumenFinalCotizacionHabitacionPageState
         final detalles = item['detalles'] ?? {};
         final cantidad = (item['cantidad'] ?? 0) as int;
         final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
-        final noches = (detalles['cantidad_noches'] ?? 1) is int
-            ? detalles['cantidad_noches']
-            : int.tryParse(detalles['cantidad_noches']?.toString() ?? '1') ?? 1;
+        final cantidadNochesValue = detalles['cantidad_noches'] ?? 1;
+        final noches = (cantidadNochesValue is int)
+            ? cantidadNochesValue
+            : int.tryParse(cantidadNochesValue.toString()) ?? 1;
 
-        final subtotal = precioUnitario * cantidad * noches;
+        final subtotal = precioUnitario * cantidad;
+
         totalFinal += subtotal;
       }
 
@@ -148,343 +180,258 @@ class _ResumenFinalCotizacionHabitacionPageState
     );
   }
 
-  Future<void> _savePDF() async {
-    try {
-      final pdfBytes = await _generatePDFBytes();
-      await Printing.layoutPdf(
-        onLayout: (format) async => pdfBytes,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar PDF: $e'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            backgroundColor: errorColor,
-          ),
-        );
-      }
-    }
-  }
+Future<void> _savePDF() async {
+  if (_isGeneratingPDF) return;
+  
+  setState(() {
+    _isGeneratingPDF = true;
+  });
 
-  Future<void> _shareCotizacion() async {
+  try {
+    final pdfBytes = await _generatePDFBytes();
+    
+    // Usamos getExternalStorageDirectory para Android y getApplicationDocumentsDirectory para iOS
+    final directory = Platform.isAndroid 
+        ? await getExternalStorageDirectory()
+        : await getApplicationDocumentsDirectory();
+    
+    if (directory == null) {
+      throw 'No se pudo acceder al directorio de almacenamiento';
+    }
+    
+    // Crear subdirectorio si no existe
+    final saveDir = Directory('${directory.path}/Cotizaciones');
+    if (!await saveDir.exists()) {
+      await saveDir.create(recursive: true);
+    }
+    
+    // Crear nombre del archivo
+    final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Habitación.pdf';
+    final filePath = '${saveDir.path}/$fileName';
+    final file = File(filePath);
+    
+    // Guardar el archivo
+    await file.writeAsBytes(pdfBytes);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('PDF guardado en: $filePath'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: primaryGreen,
+          action: SnackBarAction(
+            label: 'Abrir',
+            textColor: Colors.white,
+            onPressed: () async {
+              if (Platform.isAndroid || Platform.isIOS) {
+                final result = await File(filePath).exists();
+                if (result) {
+                  await Share.shareXFiles([XFile(filePath)]);
+                }
+              }
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar PDF: $e'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: errorColor,
+        ),
+      );
+    }
+  } finally {
+    setState(() {
+      _isGeneratingPDF = false;
+    });
+  }
+}
+    Future<void> _shareCotizacion() async {
+    if (_isGeneratingPDF) return;
+    
+    setState(() {
+      _isGeneratingPDF = true;
+    });
+
     try {
       final pdfBytes = await _generatePDFBytes();
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/Cotizacion_${widget.idCotizacion.substring(0, 8)}.pdf');
+      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Habitación.pdf';
+      final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes);
 
-      // Solución alternativa: Mostrar diálogo con opciones para compartir
-      await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Compartir cotización'),
-          content: const Text('Seleccione cómo desea compartir la cotización'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showShareOptions(file);
-              },
-              child: const Text('Compartir PDF'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showTextShareOptions();
-              },
-              child: const Text('Compartir texto'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        ),
+      // Verificar si el archivo existe
+      if (!await file.exists()) {
+        throw 'El archivo no se creó correctamente';
+      }
+
+      // Configuración específica para compartir
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Cotización de habitación para ${widget.nombreCliente}',
+        subject: 'Cotización de Hospedaje',
+        sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al preparar para compartir: $e'),
+            content: Text('Error al compartir: $e'),
             backgroundColor: errorColor,
           ),
         );
       }
+    } finally {
+      setState(() {
+        _isGeneratingPDF = false;
+      });
     }
   }
-
-  void _showShareOptions(File file) {
-    // Aquí puedes implementar tu propia lógica para compartir
-    // Por ejemplo, podrías usar la API de intent de Android o UIActivityViewController en iOS
-    // Esta es una implementación básica que muestra un diálogo informativo
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Compartir PDF'),
-        content: const Text('La cotización en PDF está lista para compartir. '
-            'Por favor, use la opción de compartir de su dispositivo.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTextShareOptions() {
-    final shareText = 'Cotización ${nombreHotel ?? 'Hotel'}\n'
-        'Cliente: ${widget.nombreCliente}\n'
-        'CI/NIT: ${widget.ciCliente}\n'
-        'Total: Bs ${totalFinal.toStringAsFixed(2)}\n'
-        'Fecha: ${formatFecha(DateTime.now())}';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Texto para compartir'),
-        content: SingleChildScrollView(
-          child: Text(shareText),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _copyToClipboard(shareText);
-            },
-            child: const Text('Copiar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _copyToClipboard(String text) async {
-    await Clipboard.setData(ClipboardData(text: text));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Texto copiado al portapapeles')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: lightBackground,
-      appBar: AppBar(
-        title: Text(
-          'Resumen de Cotización',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-            color: Colors.white,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: lightBackground,
+        appBar: AppBar(
+          title: const Text(
+            'Resumen de Cotización',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: Colors.white,
+            ),
           ),
-        ),
-        backgroundColor: darkBlue,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(16),
+          backgroundColor: darkBlue,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(16),
+            ),
           ),
+          automaticallyImplyLeading: false, // Deshabilitar botón de retroceso
         ),
-      ),
-      body: isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Cargando resumen...',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 16,
+        body: isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
                     ),
-                  ),
-                ],
-              ),
-            )
-          : error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Cargando resumen...',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: errorColor,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            error!,
+                            style: const TextStyle(
+                              color: textPrimary,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _loadData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryGreen,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Reintentar',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: errorColor,
-                          size: 48,
-                        ),
+                        if (logoHotel != null && logoHotel!.isNotEmpty)
+                          Center(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: 1,
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Image.network(
+                                logoHotel!,
+                                height: 80,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.hotel,
+                                  size: 60,
+                                  color: darkBlue.withOpacity(0.5),
+                                ),
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 16),
-                        Text(
-                          error!,
-                          style: const TextStyle(
-                            color: textPrimary,
-                            fontSize: 16,
+
+                        if (nombreHotel != null)
+                          Center(
+                            child: Text(
+                              nombreHotel!,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: darkBlue,
+                              ),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
                         const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _loadData,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryGreen,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Reintentar',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (logoHotel != null && logoHotel!.isNotEmpty)
-                        Center(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: borderColor,
-                                width: 1,
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            child: Image.network(
-                              logoHotel!,
-                              height: 80,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.hotel,
-                                size: 60,
-                                color: darkBlue.withOpacity(0.5),
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
 
-                      if (nombreHotel != null)
-                        Center(
-                          child: Text(
-                            nombreHotel!,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: darkBlue,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: cardBackground,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    'Cotización N° ${widget.idCotizacion.substring(0, 8)}...',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: darkBlue,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Text(
-                                  formatFecha(DateTime.now()),
-                                  style: TextStyle(
-                                    color: textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInfoRow('Cliente:', widget.nombreCliente),
-                            _buildInfoRow('CI/NIT:', 
-                                widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
-                            const SizedBox(height: 8),
-                            _buildInfoRow('Estado:', 
-                                cotizacionData?['estado'] ?? 'N/D'),
-                            _buildInfoRow('Fecha creación:', 
-                                formatFecha(cotizacionData?['fecha_creacion'])),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      Text(
-                        'Detalle de Habitaciones',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: darkBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (items.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: cardBackground,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'No hay habitaciones en esta cotización',
-                              style: TextStyle(
-                                color: textSecondary,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          decoration: BoxDecoration(
-                            color: cardBackground,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
@@ -494,215 +441,312 @@ class _ResumenFinalCotizacionHabitacionPageState
                             ],
                           ),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 12, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: darkBlue.withOpacity(0.1),
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      'Cotización N° ${widget.idCotizacion.substring(0, 8)}...',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: darkBlue,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        'Habitación',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                  Text(
+                                    formatFecha(DateTime.now()),
+                                    style: TextStyle(
+                                      color: textSecondary,
                                     ),
-                                    Expanded(
-                                      child: Text(
-                                        'Cant.',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        'Noches',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        'Subtotal',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        textAlign: TextAlign.end,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildInfoRow('Cliente:', widget.nombreCliente),
+                              _buildInfoRow('CI/NIT:', 
+                                  widget.ciCliente.isEmpty ? 'No especificado' : widget.ciCliente),
+                              const SizedBox(height: 8),
+                              _buildInfoRow('Estado:', 
+                                  cotizacionData?['estado'] ?? 'N/D'),
+                              _buildInfoRow('Fecha creación:', 
+                                  formatFecha(cotizacionData?['fecha_creacion'])),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        Text(
+                          'Detalle de Habitaciones',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: darkBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        if (items.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardBackground,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'No hay habitaciones en esta cotización',
+                                style: TextStyle(
+                                  color: textSecondary,
                                 ),
                               ),
-                              ...items.map((item) {
-                                final detalles = item['detalles'] ?? {};
-                                final nombreHabitacion =
-                                    detalles['nombre_habitacion'] ?? 'Sin nombre';
-                                final cantidad = detalles['cantidad'] ?? 0;
-                                final noches = detalles['cantidad_noches'] ?? 0;
-                                final subtotal = (detalles['subtotal'] ?? 0).toDouble();
-
-                                return Container(
+                            ),
+                          )
+                        else
+                          Container(
+                            decoration: BoxDecoration(
+                              color: cardBackground,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Container(
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 12, horizontal: 16),
                                   decoration: BoxDecoration(
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: borderColor,
-                                        width: 1,
-                                      ),
+                                    color: darkBlue.withOpacity(0.1),
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(12),
                                     ),
                                   ),
-                                  child: Row(
+                                  child: const Row(
                                     children: [
                                       Expanded(
                                         flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              nombreHabitacion.toString(),
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${formatFecha(detalles['fecha_ingreso'])} - ${formatFecha(detalles['fecha_salida'])}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
                                         child: Text(
-                                          cantidad.toString(),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          noches.toString(),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          'Bs ${subtotal.toStringAsFixed(2)}',
-                                          textAlign: TextAlign.end,
+                                          'Habitación',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: primaryGreen,
                                           ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Cant.',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Noches',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Subtotal',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.end,
                                         ),
                                       ),
                                     ],
                                   ),
-                                );
-                              }).toList(),
+                                ),
+                                ...items.map((item) {
+                                  final detalles = item['detalles'] ?? {};
+                                  final nombreHabitacion =
+                                      detalles['nombre_habitacion'] ?? 'Sin nombre';
+                                  final cantidad = detalles['cantidad'] ?? 0;
+                                  final noches = detalles['cantidad_noches'] ?? 0;
+                                  final subtotal = (detalles['subtotal'] ?? 0).toDouble();
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: borderColor,
+                                          width: 1,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                nombreHabitacion.toString(),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${formatFecha(detalles['fecha_ingreso'])} - ${formatFecha(detalles['fecha_salida'])}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            cantidad.toString(),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            noches.toString(),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            'Bs ${subtotal.toStringAsFixed(2)}',
+                                            textAlign: TextAlign.end,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: primaryGreen,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 24),
+
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: darkBlue.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Final:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              Text(
+                                'Bs ${totalFinal.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryGreen,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 32),
 
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: darkBlue.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Row(
                           children: [
-                            Text(
-                              'Total Final:',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isGeneratingPDF ? null : _savePDF,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: darkBlue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                child: _isGeneratingPDF
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.save, size: 20),
+                                          SizedBox(width: 8),
+                                          Text('GUARDAR'),
+                                        ],
+                                      ),
                               ),
                             ),
-                            Text(
-                              'Bs ${totalFinal.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: primaryGreen,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isGeneratingPDF ? null : _shareCotizacion,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryGreen,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                child: _isGeneratingPDF
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.share, size: 20),
+                                          SizedBox(width: 8),
+                                          Text('COMPARTIR'),
+                                        ],
+                                      ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _savePDF,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: darkBlue,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.save, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('GUARDAR'),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _shareCotizacion,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryGreen,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 2,
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.share, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('COMPARTIR'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                ),
+      ),
     );
   }
 

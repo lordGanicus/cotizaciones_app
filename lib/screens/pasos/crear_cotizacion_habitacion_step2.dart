@@ -329,7 +329,7 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                           children: [
                             Icon(Icons.add, size: 20),
                             SizedBox(width: 8),
-                            Text('AGREGAR'),
+                            Text('Agregar'),
                           ],
                         ),
                       ),
@@ -366,7 +366,7 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('CONTINUAR'),
+                          Text('Continuar'),
                           SizedBox(width: 8),
                           Icon(Icons.arrow_forward, size: 20),
                         ],

@@ -124,7 +124,7 @@ class _CrearCotizacionComidaStep4State
       );
     } catch (e, st) {
       setState(() => _isSaving = false);
-      debugPrint('❌ Error guardando cotización comida: $e\n$st');
+      debugPrint('❌ Error guardando cotización restaurante: $e\n$st');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al guardar la cotización: $e')),
       );
