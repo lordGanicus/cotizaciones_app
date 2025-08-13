@@ -200,7 +200,7 @@ class PasoResumenHabitacionesPage extends ConsumerWidget {
                                 Expanded(
                                   child: _buildDetailItem(
                                     Icons.king_bed,
-                                    'Cantidad',
+                                    'Cantidad de hab',
                                     h.cantidad.toString(),
                                   ),
                                 ),

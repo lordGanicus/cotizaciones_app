@@ -542,7 +542,7 @@ Future<void> _savePDF() async {
                                       ),
                                       Expanded(
                                         child: Text(
-                                          'Cant.',
+                                          'Cant de hab.',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),

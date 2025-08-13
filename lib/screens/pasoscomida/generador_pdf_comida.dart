@@ -79,15 +79,7 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  if (logoImage != null)
-                    pw.Center(child: pw.Image(logoImage, height: 80)),
-                  pw.SizedBox(height: 20),
-                  pw.Center(
-                    child: pw.Text(nombreSubestablecimiento,
-                        style: pw.TextStyle(
-                            fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                  ),
-                  pw.SizedBox(height: 30),
+                  pw.SizedBox(height: 40),
                   pw.Text('La Paz, ${formatFecha(DateTime.now())}', style: estiloNormal),
                   pw.SizedBox(height: 16),
 
@@ -117,33 +109,29 @@ Future<Uint8List> generarPdfCotizacionComida({
                   ),
 
                  pw.SizedBox(height: 24),
-                  pw.Text('Estimado(a):', style: estiloNegrita),
-                  pw.SizedBox(height: 8),
-                  pw.Text(
-                    'Gracias por confiar en nosotros para la realización de su evento. Nuestro restaurante ha sido cuidadosamente diseñado para ofrecerle un ',
-                    style: estiloNormal,
-                    textAlign: pw.TextAlign.justify,
-                  ),
                   pw.RichText(
                     textAlign: pw.TextAlign.justify,
                     text: pw.TextSpan(
                       children: [
+                        pw.TextSpan(text: 'Estimado(a):\n\n', style: estiloNegrita),
+                        pw.TextSpan(
+                          text: 'Gracias por confiar en nosotros para la realización de su evento. Nuestro restaurante ha sido cuidadosamente diseñado para ofrecerle un ',
+                          style: estiloNormal,
+                        ),
                         pw.TextSpan(
                           text: 'ambiente exclusivo, cálido y privado',
                           style: estiloNegrita,
                         ),
                         pw.TextSpan(
-                          text: ', perfecto para todo tipo de ocasión: desde celebraciones familiares hasta eventos empresariales, cenas conmemorativas o encuentros especiales.',
+                          text: ', perfecto para todo tipo de ocasión: desde celebraciones familiares hasta eventos empresariales, cenas conmemorativas o encuentros especiales.\n\n',
+                          style: estiloNormal,
+                        ),
+                        pw.TextSpan(
+                          text: 'Le presentamos, a continuación, los aspectos destacados según sus requerimientos.',
                           style: estiloNormal,
                         ),
                       ],
                     ),
-                  ),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    'Le presentamos, a continuación, los aspectos destacados según sus requerimientos.',
-                    style: estiloNormal,
-                    textAlign: pw.TextAlign.justify,
                   ),
 
                   pw.SizedBox(height: 24),

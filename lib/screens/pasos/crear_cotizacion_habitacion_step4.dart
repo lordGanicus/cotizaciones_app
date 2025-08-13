@@ -291,7 +291,7 @@ class PasoConfirmarHabitacionPage extends ConsumerWidget {
                                     Expanded(
                                       child: _buildDetailRow(
                                         Icons.king_bed,
-                                        'Cantidad',
+                                        'Cantidad de hab',
                                         h.cantidad.toString(),
                                       ),
                                     ),

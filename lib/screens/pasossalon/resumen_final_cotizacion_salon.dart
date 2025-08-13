@@ -212,16 +212,32 @@ class _ResumenFinalCotizacionSalonPageState
       return fecha?.toString() ?? 'N/D';
     }
   }
-
-  String formatHora(dynamic hora) {
-    if (hora == null) return 'N/D';
-    try {
-      return DateFormat('HH:mm')
-          .format(DateFormat('HH:mm:ss').parse(hora.toString()));
-    } catch (_) {
-      return hora.toString();
+Map<String, dynamic>? parseDetallesSalon(dynamic detalles) {
+  if (detalles == null) return null;
+  
+  try {
+    if (detalles is String) {
+      return jsonDecode(detalles) as Map<String, dynamic>;
+    } else if (detalles is Map) {
+      return detalles.cast<String, dynamic>();
     }
+  } catch (e) {
+    debugPrint('Error parsing detalles salon: $e');
   }
+  return null;
+}
+String formatHora(dynamic hora) {
+  try {
+    if (hora is String) {
+      // Extrae solo la parte de la hora del string ISO
+      final dateTime = DateTime.parse(hora);
+      return DateFormat('HH:mm').format(dateTime);
+    }
+    return hora?.toString() ?? 'N/D';
+  } catch (_) {
+    return hora?.toString() ?? 'N/D';
+  }
+}
 
   Future<Uint8List> _generatePDFBytes() async {
     return await generarPdfCotizacionSalon(
@@ -578,8 +594,10 @@ class _ResumenFinalCotizacionSalonPageState
                                 _buildInfoRow(
                                     'Fecha evento:', formatFecha(fechaEvento)),
                               if (horaInicio != null && horaFin != null)
-                                _buildInfoRow('Horario:',
-                                    '${formatHora(horaInicio)} - ${formatHora(horaFin)}'),
+                                _buildInfoRow(
+                                  'Horario:', 
+                                  '${formatHora(horaInicio)} - ${formatHora(horaFin)}',
+                                ),
                               if (tipoArmado.isNotEmpty)
                                 _buildInfoRow('Tipo de armado:', tipoArmado),
                               if (participantes > 0)

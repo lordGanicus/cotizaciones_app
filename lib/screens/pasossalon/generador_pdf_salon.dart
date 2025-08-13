@@ -74,15 +74,20 @@ Future<Uint8List> generarPdfCotizacionSalon({
     }
   }
 
-  String formatHora(dynamic hora) {
-    if (hora == null) return 'N/D';
-    try {
-      return DateFormat('HH:mm')
-          .format(DateFormat('HH:mm:ss').parse(hora.toString()));
-    } catch (_) {
-      return hora.toString();
+
+String formatHora(dynamic hora) {
+  try {
+    if (hora is String) {
+      // Extrae solo la parte de la hora del string ISO
+      final dateTime = DateTime.parse(hora);
+      return DateFormat('HH:mm').format(dateTime);
     }
+    return hora?.toString() ?? 'N/D';
+  } catch (_) {
+    return hora?.toString() ?? 'N/D';
   }
+}
+
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
 

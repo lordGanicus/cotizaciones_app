@@ -166,7 +166,7 @@ class _ResumenFinalCotizacionComidaPageState
   String formatFecha(dynamic fecha) {
     try {
       final dt = DateTime.parse(fecha.toString());
-      return DateFormat('dd/MM/yyyy').format(dt);
+      return DateFormat('dd/MM/yyyy HH:mm').format(dt); // Formato mejorado con hora
     } catch (_) {
       return fecha?.toString() ?? 'N/D';
     }
@@ -503,6 +503,7 @@ class _ResumenFinalCotizacionComidaPageState
                                     formatFecha(DateTime.now()),
                                     style: TextStyle(
                                       color: textSecondary,
+                                      fontSize: 14, // Tamaño de fuente ajustado
                                     ),
                                   ),
                                 ],
@@ -569,7 +570,7 @@ class _ResumenFinalCotizacionComidaPageState
                                 // Encabezado de la tabla
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 12), // Reducido el padding horizontal
+                                      vertical: 12, horizontal: 12),
                                   decoration: BoxDecoration(
                                     color: darkBlue.withOpacity(0.1),
                                     borderRadius: const BorderRadius.vertical(
@@ -584,7 +585,7 @@ class _ResumenFinalCotizacionComidaPageState
                                           'Descripción',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            fontSize: 12, // Tamaño de fuente reducido
+                                            fontSize: 12,
                                           ),
                                         ),
                                       ),
@@ -632,7 +633,7 @@ class _ResumenFinalCotizacionComidaPageState
 
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 8), // Padding reducido
+                                        vertical: 10, horizontal: 8),
                                     decoration: BoxDecoration(
                                       border: Border(
                                         top: BorderSide(
@@ -649,9 +650,9 @@ class _ResumenFinalCotizacionComidaPageState
                                             descripcion.toString(),
                                             style: TextStyle(
                                               fontWeight: FontWeight.w500,
-                                              fontSize: 12, // Tamaño de fuente reducido
+                                              fontSize: 12,
                                             ),
-                                            maxLines: 2, // Permitir múltiples líneas
+                                            maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),

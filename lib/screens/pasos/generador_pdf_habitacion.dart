@@ -167,7 +167,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                           _cell('Habitación'),
                           _cell('Ingreso'),
                           _cell('Salida'),
-                          _cell('Cantidad'),
+                          _cell('Cantidad de hab.'),
                           _cell('Noches'),
                           _cell('P. Unitario'),
                           _cell('Subtotal'),

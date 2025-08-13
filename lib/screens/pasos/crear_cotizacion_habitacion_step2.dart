@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/cupertino.dart'; // Para CupertinoIcons
 import '../../models/cotizacion_habitacion.dart';
 import '../../providers/cotizacion_habitacion_provider.dart';
 import 'seleccionar_habitacion_modal.dart';
 import 'crear_cotizacion_habitacion_step3.dart';
+import '../hotel_selection.dart'; // Asegúrate que la ruta sea correcta
 
 class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
   final String idCotizacion;
@@ -26,15 +28,50 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
   static const Color textSecondary = Color(0xFF555555);
   static const Color borderColor = Color(0xFFE0E0E0);
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final habitaciones = ref.watch(cotizacionHabitacionProvider);
-    final totalCotizacion = habitaciones.fold<double>(
-      0.0,
-      (sum, hab) => sum + (hab.tarifa * hab.cantidadNoches * hab.cantidad),
+@override
+Widget build(BuildContext context, WidgetRef ref) {
+  final habitaciones = ref.watch(cotizacionHabitacionProvider);
+  final totalCotizacion = habitaciones.fold<double>(
+    0.0,
+    (sum, hab) => sum + (hab.tarifa * hab.cantidadNoches * hab.cantidad),
+  );
+
+  Future<bool> _confirmarSalida() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar'),
+        content: const Text(
+          '¿Está seguro de retroceder? Perderá todos sus datos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
     );
 
-    return Scaffold(
+    if (confirmar == true) {
+      ref.read(cotizacionHabitacionProvider.notifier).limpiar();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HotelSelectionPage()),
+        (route) => false,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  return WillPopScope(
+    onWillPop: _confirmarSalida,
+    child: Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
         title: const Text(
@@ -52,6 +89,10 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
           borderRadius: BorderRadius.vertical(
             bottom: Radius.circular(16),
           ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _confirmarSalida,
         ),
       ),
       body: Padding(
@@ -75,19 +116,10 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.person,
-                        color: primaryGreen,
-                        size: 20,
-                      ),
+                      Icon(Icons.person, color: primaryGreen, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        'Cliente',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
+                      Text('Cliente',
+                          style: TextStyle(color: textSecondary, fontSize: 14)),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -102,25 +134,16 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Icon(
-                        Icons.badge,
-                        color: primaryGreen,
-                        size: 20,
-                      ),
+                      Icon(Icons.badge, color: primaryGreen, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        'CI/NIT',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
+                      Text('CI/NIT',
+                          style: TextStyle(color: textSecondary, fontSize: 14)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     ciCliente.isEmpty ? 'No especificado' : ciCliente,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: textPrimary,
@@ -138,27 +161,15 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.hotel,
-                            size: 48,
-                            color: darkBlue.withOpacity(0.3),
-                          ),
+                          Icon(Icons.hotel, size: 48, color: darkBlue.withOpacity(0.3)),
                           const SizedBox(height: 16),
-                          Text(
-                            'No hay habitaciones agregadas',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: textSecondary,
-                            ),
-                          ),
+                          Text('No hay habitaciones agregadas',
+                              style: TextStyle(fontSize: 16, color: textSecondary)),
                           const SizedBox(height: 8),
-                          Text(
-                            'Presiona el botón para agregar',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: textSecondary.withOpacity(0.7),
-                            ),
-                          ),
+                          Text('Presiona el botón para agregar',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: textSecondary.withOpacity(0.7))),
                         ],
                       ),
                     )
@@ -185,32 +196,46 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                           ),
                           child: ExpansionTile(
                             tilePadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                            title: Text(
-                              hab.nombreHabitacion,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
-                                fontSize: 16,
-                              ),
+                                horizontal: 16, vertical: 8),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    hab.nombreHabitacion,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: textPrimary,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'Bs ${subtotal.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: primaryGreen,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
                             ),
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
                                 '${hab.cantidad} × ${hab.cantidadNoches} noches',
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 14,
-                                ),
+                                style:
+                                    TextStyle(color: textSecondary, fontSize: 14),
                               ),
                             ),
-                            trailing: Text(
-                              'Bs ${subtotal.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: primaryGreen,
-                                fontSize: 16,
-                              ),
+                            trailing: IconButton(
+                              icon: const Icon(CupertinoIcons.delete,
+                                  color: Colors.red),
+                              onPressed: () {
+                                ref
+                                    .read(cotizacionHabitacionProvider.notifier)
+                                    .eliminarHabitacion(index);
+                              },
                             ),
                             children: [
                               Padding(
@@ -219,19 +244,14 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                                 child: Column(
                                   children: [
                                     _buildDetailRow(
-                                      'Fecha de ingreso',
-                                      _formatDate(hab.fechaIngreso),
-                                    ),
+                                        'Fecha de ingreso',
+                                        _formatDate(hab.fechaIngreso)),
                                     const SizedBox(height: 8),
-                                    _buildDetailRow(
-                                      'Fecha de salida',
-                                      _formatDate(hab.fechaSalida),
-                                    ),
+                                    _buildDetailRow('Fecha de salida',
+                                        _formatDate(hab.fechaSalida)),
                                     const SizedBox(height: 8),
-                                    _buildDetailRow(
-                                      'Tarifa por noche',
-                                      'Bs ${hab.tarifa.toStringAsFixed(2)}',
-                                    ),
+                                    _buildDetailRow('Tarifa por noche',
+                                        'Bs ${hab.tarifa.toStringAsFixed(2)}'),
                                   ],
                                 ),
                               ),
@@ -256,14 +276,11 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Total provisional:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
+                        Text('Total provisional:',
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary)),
                         Text(
                           'Bs ${totalCotizacion.toStringAsFixed(2)}',
                           style: TextStyle(
@@ -282,7 +299,7 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: _confirmarSalida,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -311,7 +328,8 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (_) => const SeleccionarHabitacionModal(),
+                            builder: (_) =>
+                                const SeleccionarHabitacionModal(),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -378,20 +396,14 @@ class CrearCotizacionHabitacionStep2 extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildDetailRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: textSecondary,
-            fontSize: 14,
-          ),
-        ),
+        Text(label, style: TextStyle(color: textSecondary, fontSize: 14)),
         Text(
           value,
           style: const TextStyle(
