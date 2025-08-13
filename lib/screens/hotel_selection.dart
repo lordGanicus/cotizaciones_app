@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
 import 'gestion_general_screen.dart';
 import 'pasossalon/crear_cotizacion_salon_step1.dart';
 import 'pasoEstablecimiento/pantalla_establecimientos.dart';
 import '../screens/pasosUsuarios/usuarios_list.dart';
 import '../screens/pasoscomida/crear_cotizacion_comida_step1.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../screens/establecimiento_dropdown.dart';
+
 
 import '../../models/establecimiento.dart';
 import '../../providers/establecimiento_provider.dart';
@@ -59,89 +61,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     _searchController.dispose();
     super.dispose();
   }
-  /*
-  // Método para cargar los establecimientos disponibles
-  Future<void> _cargarEstablecimientosDisponibles() async {
-  final user = supabase.auth.currentUser;
-  if (user == null) return;
 
-  setState(() => cargandoEstablecimientos = true);
-
-  try {
-    // Traer el rol y el id_establecimiento del usuario
-    final userData = await supabase
-        .from('usuarios')
-        .select('id_establecimiento, roles(nombre)')
-        .eq('id', user.id)
-        .single();
-
-    final String? rol = userData['roles']?['nombre'];
-    final bool isAdmin = rol == 'Administrador';
-    final bool isGerente = rol == 'Gerente';
-
-    dynamic response;
-
-    if (isAdmin) {
-      // Admin ve todos
-      response = await supabase.from('establecimientos').select('*');
-    } else if (isGerente) {
-      // Gerente solo ve el suyo
-      final String? idEstablecimiento = userData['id_establecimiento'];
-      if (idEstablecimiento != null) {
-        response = await supabase
-            .from('establecimientos')
-            .select('*')
-            .eq('id', idEstablecimiento);
-      } else {
-        response = [];
-      }
-    } else {
-      // Otros roles: sin establecimientos
-      response = [];
-    }
-
-    setState(() {
-      establecimientosDisponibles =
-          List<Map<String, dynamic>>.from(response ?? []);
-      if (establecimientosDisponibles.isNotEmpty) {
-        establecimientoSeleccionado =
-            hotelUnico ?? establecimientosDisponibles.first;
-        establecimientoSeleccionadoId = establecimientoSeleccionado?['id'];
-      }
-    });
-  } catch (e) {
-    print('Error al cargar establecimientos: $e');
-  } finally {
-    setState(() => cargandoEstablecimientos = false);
-  }
-}
-
-
-  // Método para cambiar de establecimiento
-Future<void> cambiarEstablecimiento(
-    WidgetRef ref, String nuevoId, BuildContext context) async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
-  if (user == null) return;
-
-  try {
-    await supabase.from('usuarios').update({
-      'id_establecimiento': nuevoId
-    }).eq('id', user.id);
-
-    // Refrescar provider
-    ref.invalidate(establecimientosDisponiblesProvider);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Establecimiento cambiado con éxito')),
-    );
-  } catch (e) {
-    print('Error al cambiar establecimiento: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error al cambiar establecimiento')),
-    );
-  }
-}*/
   void _filtrarCotizaciones() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -321,28 +241,46 @@ Future<void> cambiarEstablecimiento(
     final user = supabase.auth.currentUser;
     if (user == null || hotelUnico == null) return;
 
-    final nuevaCotizacion = await supabase
-        .from('cotizaciones')
-        .insert({
-          'id_usuario': user.id,
-        })
-        .select()
-        .single();
+    try {
+      final nuevaCotizacion = await supabase
+          .from('cotizaciones')
+          .insert({
+            'id_usuario': user.id,
+          })
+          .select()
+          .single();
 
-    if (context.mounted) {
-      setState(() => showCreateDialog = false);
-      final idCotizacion = nuevaCotizacion['id'];
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Paso1CotizacionSalonPage(
-            idCotizacion: idCotizacion,
-            idEstablecimiento: hotelUnico!['id'],
-            idUsuario: user.id,
-            idSubestablecimiento: subestablecimientoUnico?['id'],
+      if (context.mounted) {
+        setState(() => showCreateDialog = false);
+
+        final idCotizacion = nuevaCotizacion['id'];
+        print('Nueva cotización creada con ID: $idCotizacion');
+        print('Establecimiento seleccionado: $establecimientoSeleccionadoId');
+        print('Usuario actual: ${user.id}');
+        print('Subestablecimiento: ${subestablecimientoUnico?['id']}');
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => Paso1CotizacionSalonPage(
+              idCotizacion: idCotizacion,
+              idEstablecimiento: establecimientoSeleccionadoId!, // <-- fuerza no null
+              idUsuario: user.id,
+              idSubestablecimiento: subestablecimientoUnico?['id'],
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      print('Error creando cotización: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creando cotización: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 
@@ -366,7 +304,7 @@ Future<void> cambiarEstablecimiento(
         MaterialPageRoute(
           builder: (_) => CrearCotizacionComidaStep1(
             idCotizacion: idCotizacion,
-            idEstablecimiento: hotelUnico!['id'],
+            idEstablecimiento: establecimientoSeleccionadoId, // <- valor actualizado
             idUsuario: user.id,
             idSubestablecimiento: subestablecimientoUnico?['id'],
           ),
@@ -621,7 +559,99 @@ Future<void> cambiarEstablecimiento(
       ),
     );
   }
+Future<void> _cambiarEstablecimiento(
+  BuildContext context,
+  WidgetRef ref,
+  String nuevoId,
+  List<Establecimiento> establecimientos,
+) async {
+  final nuevoEstablecimiento = establecimientos.firstWhere((e) => e.id == nuevoId);
+  
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Confirmar cambio'),
+      content: Text('¿Estás seguro de cambiar al establecimiento ${nuevoEstablecimiento.nombre}?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Aceptar'),
+        ),
+      ],
+    ),
+  );
 
+  if (confirmar != true) return;
+
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
+
+  try {
+    final antiguoPrincipalId = establecimientoSeleccionadoId;
+    print('Iniciando cambio de establecimiento: $antiguoPrincipalId -> $nuevoId');
+
+    // 1. Insertar antiguo principal en usuarios_establecimientos si no existe
+    if (antiguoPrincipalId != null) {
+      final response = await supabase
+          .from('usuarios_establecimientos')
+          .select()
+          .eq('id_usuario', user.id)
+          .eq('id_establecimiento', antiguoPrincipalId);
+
+      // 'response' es dynamic (generalmente List<dynamic>)
+      if (response == null || (response is List && response.isEmpty)) {
+        print('Insertando antiguo principal en secundarios');
+        await supabase.from('usuarios_establecimientos').insert({
+          'id_usuario': user.id,
+          'id_establecimiento': antiguoPrincipalId,
+        });
+      }
+    }
+
+    // 2. Eliminar el nuevo seleccionado de usuarios_establecimientos
+    print('Eliminando nuevo seleccionado de secundarios');
+    await supabase
+        .from('usuarios_establecimientos')
+        .delete()
+        .eq('id_usuario', user.id)
+        .eq('id_establecimiento', nuevoId);
+
+    // 3. Actualizar usuarios.id_establecimiento
+    print('Actualizando usuario.id_establecimiento');
+    await supabase
+        .from('usuarios')
+        .update({'id_establecimiento': nuevoId})
+        .eq('id', user.id);
+
+    // Actualizar estado local
+    setState(() {
+      establecimientoSeleccionadoId = nuevoId;
+      establecimientoSeleccionado = nuevoEstablecimiento;
+    });
+
+    // Refrescar providers
+    ref.invalidate(usuarioActualProvider);
+    ref.invalidate(establecimientosFiltradosProvider);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Establecimiento cambiado con éxito')),
+      );
+    }
+  } catch (e) {
+    print('Error al cambiar establecimiento: $e');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error al cambiar establecimiento')),
+      );
+    }
+  }
+}
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -691,170 +721,136 @@ Future<void> cambiarEstablecimiento(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    // Selector de establecimiento (ya no necesitamos el if porque el provider filtra)
-                  if (establecimientosFiltradosProvider != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF2D4059), width: 1),
+                    if (establecimientosFiltradosProvider != null) ...[
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF2D4059), width: 1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Consumer(
+        builder: (context, ref, _) {
+          final establecimientosAsync = ref.watch(establecimientosFiltradosProvider);
+          final usuarioAsync = ref.watch(usuarioActualProvider);
+
+          print('--- REBUILD DROPDOWN ---');
+          print('Estado establecimientosAsync: ${establecimientosAsync.value}');
+          print('Estado usuarioAsync: ${usuarioAsync.value}');
+
+          return establecimientosAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) {
+              print('Error cargando establecimientos: $error');
+              return Text('Error: $error');
+            },
+            data: (establecimientos) {
+              return usuarioAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) {
+                  print('Error cargando usuario: $error');
+                  return Text('Error: $error');
+                },
+                data: (usuario) {
+                  print('Establecimientos disponibles: ${establecimientos.length}');
+                  print('ID establecimiento usuario: ${usuario.idEstablecimiento}');
+                  print('Estado local seleccionado: $establecimientoSeleccionadoId');
+
+                  // Inicializar selección solo si es necesario
+                  if (establecimientoSeleccionadoId == null && establecimientos.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final nuevoId = usuario.idEstablecimiento ?? establecimientos.first.id;
+                      final estSeleccionado = establecimientos.firstWhere(
+                        (e) => e.id == nuevoId,
+                        orElse: () => establecimientos.first,
+                      );
+                      setState(() {
+                        establecimientoSeleccionadoId = nuevoId;
+                        establecimientoSeleccionado = estSeleccionado; // inicializa el logo también
+                      });
+                      print('Inicializando selección con: $nuevoId');
+                    });
+                  }
+
+                  // Si no hay establecimientos
+                  if (establecimientos.isEmpty) {
+                    return const Text('No hay establecimientos disponibles');
+                  }
+
+                  // Ordenar establecimientos (principal primero)
+                  final listaOrdenada = List<Establecimiento>.from(establecimientos);
+                  if (usuario.idEstablecimiento != null) {
+                    listaOrdenada.sort((a, b) {
+                      if (a.id == usuario.idEstablecimiento) return -1;
+                      if (b.id == usuario.idEstablecimiento) return 1;
+                      return 0;
+                    });
+                  }
+
+                  return DropdownButton<String>(
+                    isExpanded: true,
+                    value: establecimientoSeleccionadoId,
+                    underline: const SizedBox(),
+                    icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
+                    items: listaOrdenada.map((e) {
+                      return DropdownMenuItem<String>(
+                        value: e.id,
+                        child: Text(
+                          e.nombre ?? 'Sin nombre',
+                          style: const TextStyle(color: Color(0xFF2D4059)),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final establecimientos = ref.watch(establecimientosFiltradosProvider).maybeWhen(
-                                  data: (list) => list,
-                                  orElse: () => [],
-                                );
+                      );
+                    }).toList(),
+                    onChanged: (nuevoId) async {
+                      if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
+                        _cambiarEstablecimiento(context, ref, nuevoId, listaOrdenada);
+                      }
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    ),
+  ),
+  const SizedBox(height: 10),
+],
 
-                            // Inicializar el establecimiento seleccionado si aún no hay
-                            if (establecimientos.isNotEmpty && establecimientoSeleccionadoId == null) {
-                              establecimientoSeleccionado = establecimientos.first;
-                              establecimientoSeleccionadoId = establecimientos.first.id;
-                            }
-
-                            return DropdownButton<String>(
-                              isExpanded: true,
-                              value: establecimientoSeleccionadoId,
-                              underline: const SizedBox(),
-                              icon: cargandoEstablecimientos
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
-                              items: establecimientos.map((e) {
-                                return DropdownMenuItem<String>(
-                                  value: e.id,
-                                  child: Text(
-                                    e.nombre ?? 'Sin nombre',
-                                    style: const TextStyle(color: Color(0xFF2D4059)),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: cargandoEstablecimientos
-                                  ? null
-                                  : (nuevoId) async {
-                                      if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
-                                        final nuevoEstablecimiento = establecimientos.firstWhere((e) => e.id == nuevoId);
-
-                                        final confirmar = await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Confirmar cambio'),
-                                            content: Text(
-                                              '¿Estás seguro de cambiar al establecimiento ${nuevoEstablecimiento.nombre}?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, false),
-                                                child: const Text('Cancelar'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, true),
-                                                child: const Text('Aceptar'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-
-                                        if (confirmar == true) {
-                                          final supabase = Supabase.instance.client;
-                                          final user = supabase.auth.currentUser;
-                                          if (user != null) {
-                                            try {
-                                              final antiguoPrincipalId = establecimientoSeleccionadoId;
-
-                                              // 1️⃣ Insertar antiguo principal en usuarios_establecimientos si no existe
-                                              if (antiguoPrincipalId != null) {
-                                                final existing = await supabase
-                                                    .from('usuarios_establecimientos')
-                                                    .select()
-                                                    .eq('id_usuario', user.id)
-                                                    .eq('id_establecimiento', antiguoPrincipalId);
-
-                                                if ((existing as List).isEmpty) {
-                                                  await supabase.from('usuarios_establecimientos').insert({
-                                                    'id_usuario': user.id,
-                                                    'id_establecimiento': antiguoPrincipalId,
-                                                  });
-                                                }
-                                              }
-
-                                              // 2️⃣ Eliminar el nuevo seleccionado de usuarios_establecimientos
-                                              await supabase
-                                                  .from('usuarios_establecimientos')
-                                                  .delete()
-                                                  .eq('id_usuario', user.id)
-                                                  .eq('id_establecimiento', nuevoId);
-
-                                              // 3️⃣ Actualizar usuarios.id_establecimiento
-                                              await supabase
-                                                  .from('usuarios')
-                                                  .update({'id_establecimiento': nuevoId})
-                                                  .eq('id', user.id);
-
-                                              // 4️⃣ Actualizar el estado local
-                                              setState(() {
-                                                establecimientoSeleccionadoId = nuevoId;
-                                                establecimientoSeleccionado = nuevoEstablecimiento;
-                                              });
-
-                                              // 5️⃣ Refrescar provider
-                                              ref.invalidate(usuarioActualProvider);
-
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Establecimiento cambiado con éxito')),
-                                              );
-                                            } catch (e) {
-                                              print('Error al cambiar establecimiento: $e');
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Error al cambiar establecimiento')),
-                                              );
-                                            }
-                                          }
-                                        }
-                                      }
-                                    },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                      // Logo
-                      if (hotelUnico != null &&
-                          hotelUnico!['logotipo'] != null) ...[
-                        Center(
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D4059),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                hotelUnico!['logotipo'],
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.business,
-                                  color: Colors.white,
-                                  size: 50,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-
-                      // Usuario info
+// Logo que se actualiza automáticamente según el establecimiento seleccionado
+if (establecimientoSeleccionado != null &&
+    establecimientoSeleccionado!.logotipo != null) ...[
+  Center(
+    child: Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D4059),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          establecimientoSeleccionado!.logotipo!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            print('Error cargando logo de ${establecimientoSeleccionado!.nombre}');
+            return const Icon(
+              Icons.business,
+              color: Colors.white,
+              size: 50,
+            );
+          },
+        ),
+      ),
+    ),
+  ),
+  const SizedBox(height: 20),
+],
+                                            // Usuario info
                       if (datosUsuario != null) ...[
                         Row(
                           children: [

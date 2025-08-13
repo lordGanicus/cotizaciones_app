@@ -16,7 +16,8 @@ final usuarioActualProvider = FutureProvider<Usuario>((ref) async {
   // 1️⃣ Traer datos de usuario y rol
   final data = await supabase
       .from('usuarios')
-      .select('id, ci, nombre_completo, celular, genero, avatar, id_rol, roles(nombre), id_establecimiento, id_subestablecimiento')
+      .select(
+          'id, ci, nombre_completo, celular, genero, avatar, id_rol, roles(nombre), id_establecimiento, id_subestablecimiento')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -35,18 +36,21 @@ final usuarioActualProvider = FutureProvider<Usuario>((ref) async {
   }
   print('Rol procesado: $rolNombre');
 
-  // 2️⃣ Traer establecimiento principal
-  String? idEstablecimiento = map['id_establecimiento']?.toString();
-  if (idEstablecimiento != null) {
+  // 2️⃣ Traer establecimiento principal (ID + nombre)
+  String? idEstablecimiento;
+  String? nombreEstablecimiento;
+
+  if (map['id_establecimiento'] != null) {
     final estData = await supabase
         .from('establecimientos')
         .select('id, nombre')
-        .eq('id', idEstablecimiento)
+        .eq('id', map['id_establecimiento'].toString())
         .maybeSingle();
 
     if (estData != null) {
-      idEstablecimiento = estData['id'];
-      print('Principal: ${estData['nombre']}');
+      idEstablecimiento = estData['id']?.toString();
+      nombreEstablecimiento = estData['nombre']?.toString();
+      print('Principal: $nombreEstablecimiento');
     }
   }
 
@@ -73,7 +77,7 @@ final usuarioActualProvider = FutureProvider<Usuario>((ref) async {
     idRol: map['id_rol'],
     rolNombre: rolNombre,
     idEstablecimiento: idEstablecimiento,
-    establecimientoNombre: null, // opcional, si quieres nombre principal puedes traerlo en otro select
+    establecimientoNombre: nombreEstablecimiento, // <- ahora sí viene el nombre
     idSubestablecimiento: map['id_subestablecimiento'],
     email: '',
     otrosEstablecimientos: otrosEstablecimientos, // solo IDs

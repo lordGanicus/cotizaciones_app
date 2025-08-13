@@ -38,4 +38,5 @@ class Establecimiento {
       'membrete_public_id': membretePublicId,
     };
   }
+
 }
