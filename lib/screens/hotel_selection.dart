@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'registro_usuario_page.dart';
 import 'pasos/crear_cotizacion_habitacion_step1.dart';
 import 'gestion_general_screen.dart';
@@ -8,6 +9,10 @@ import 'pasossalon/crear_cotizacion_salon_step1.dart';
 import 'pasoEstablecimiento/pantalla_establecimientos.dart';
 import '../screens/pasosUsuarios/usuarios_list.dart';
 import '../screens/pasoscomida/crear_cotizacion_comida_step1.dart';
+
+import '../../models/establecimiento.dart';
+import '../../providers/establecimiento_provider.dart';
+import '../../providers/usuario_provider.dart';
 
 class HotelSelectionPage extends StatefulWidget {
   const HotelSelectionPage({super.key});
@@ -32,9 +37,9 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
   final TextEditingController _searchController = TextEditingController();
 
   // Variables para el selector de establecimientos
-  List<Map<String, dynamic>> establecimientosDisponibles = [];
-  Map<String, dynamic>? establecimientoSeleccionado;
-  String? establecimientoSeleccionadoId; // ← NUEVA VARIABLE
+  List<Establecimiento> establecimientosDisponibles = [];
+  Establecimiento? establecimientoSeleccionado;
+  String? establecimientoSeleccionadoId;
   bool cargandoEstablecimientos = false;
 
   @override
@@ -42,7 +47,8 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     super.initState();
     _cargarInformacion().then((_) {
       if (rolUsuario?['nombre'] == 'Administrador') {
-        _cargarEstablecimientosDisponibles();
+          _cargarInformacion();
+          _searchController.addListener(_filtrarCotizaciones);
       }
     });
     _searchController.addListener(_filtrarCotizaciones);
@@ -53,63 +59,89 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     _searchController.dispose();
     super.dispose();
   }
-
+  /*
   // Método para cargar los establecimientos disponibles
   Future<void> _cargarEstablecimientosDisponibles() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
 
-    setState(() => cargandoEstablecimientos = true);
+  setState(() => cargandoEstablecimientos = true);
 
-    try {
-      final response = await supabase.from('establecimientos').select('*');
+  try {
+    // Traer el rol y el id_establecimiento del usuario
+    final userData = await supabase
+        .from('usuarios')
+        .select('id_establecimiento, roles(nombre)')
+        .eq('id', user.id)
+        .single();
 
-      setState(() {
-        establecimientosDisponibles = List<Map<String, dynamic>>.from(response);
-        if (establecimientosDisponibles.isNotEmpty) {
-          establecimientoSeleccionado =
-              hotelUnico ?? establecimientosDisponibles.first;
-          establecimientoSeleccionadoId =
-              establecimientoSeleccionado?['id']; // ← Asignar ID inicial
-        }
-      });
-    } catch (e) {
-      print('Error al cargar establecimientos: $e');
-    } finally {
-      setState(() => cargandoEstablecimientos = false);
+    final String? rol = userData['roles']?['nombre'];
+    final bool isAdmin = rol == 'Administrador';
+    final bool isGerente = rol == 'Gerente';
+
+    dynamic response;
+
+    if (isAdmin) {
+      // Admin ve todos
+      response = await supabase.from('establecimientos').select('*');
+    } else if (isGerente) {
+      // Gerente solo ve el suyo
+      final String? idEstablecimiento = userData['id_establecimiento'];
+      if (idEstablecimiento != null) {
+        response = await supabase
+            .from('establecimientos')
+            .select('*')
+            .eq('id', idEstablecimiento);
+      } else {
+        response = [];
+      }
+    } else {
+      // Otros roles: sin establecimientos
+      response = [];
     }
+
+    setState(() {
+      establecimientosDisponibles =
+          List<Map<String, dynamic>>.from(response ?? []);
+      if (establecimientosDisponibles.isNotEmpty) {
+        establecimientoSeleccionado =
+            hotelUnico ?? establecimientosDisponibles.first;
+        establecimientoSeleccionadoId = establecimientoSeleccionado?['id'];
+      }
+    });
+  } catch (e) {
+    print('Error al cargar establecimientos: $e');
+  } finally {
+    setState(() => cargandoEstablecimientos = false);
   }
+}
+
 
   // Método para cambiar de establecimiento
-  Future<void> _cambiarEstablecimiento(
-      Map<String, dynamic> nuevoEstablecimiento) async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+Future<void> cambiarEstablecimiento(
+    WidgetRef ref, String nuevoId, BuildContext context) async {
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
 
-    setState(() => cargandoEstablecimientos = true);
+  try {
+    await supabase.from('usuarios').update({
+      'id_establecimiento': nuevoId
+    }).eq('id', user.id);
 
-    try {
-      await supabase.from('usuarios').update(
-          {'id_establecimiento': nuevoEstablecimiento['id']}).eq('id', user.id);
+    // Refrescar provider
+    ref.invalidate(establecimientosDisponiblesProvider);
 
-      setState(() {
-        establecimientoSeleccionado = nuevoEstablecimiento;
-        establecimientoSeleccionadoId =
-            nuevoEstablecimiento['id']; // ← Actualizar ID
-        hotelUnico = nuevoEstablecimiento;
-      });
-
-      await _cargarInformacion();
-    } catch (e) {
-      print('Error al cambiar establecimiento: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al cambiar de establecimiento')),
-      );
-    } finally {
-      setState(() => cargandoEstablecimientos = false);
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Establecimiento cambiado con éxito')),
+    );
+  } catch (e) {
+    print('Error al cambiar establecimiento: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Error al cambiar establecimiento')),
+    );
   }
-
+}*/
   void _filtrarCotizaciones() {
     final query = _searchController.text.toLowerCase();
     setState(() {
@@ -659,21 +691,31 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Selector de establecimiento para administrador
-                      if (isAdmin &&
-                          establecimientosDisponibles.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: const Color(0xFF2D4059), width: 1),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: DropdownButton<String>(
+                    // Selector de establecimiento (ya no necesitamos el if porque el provider filtra)
+                  if (establecimientosFiltradosProvider != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF2D4059), width: 1),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final establecimientos = ref.watch(establecimientosFiltradosProvider).maybeWhen(
+                                  data: (list) => list,
+                                  orElse: () => [],
+                                );
+
+                            // Inicializar el establecimiento seleccionado si aún no hay
+                            if (establecimientos.isNotEmpty && establecimientoSeleccionadoId == null) {
+                              establecimientoSeleccionado = establecimientos.first;
+                              establecimientoSeleccionadoId = establecimientos.first.id;
+                            }
+
+                            return DropdownButton<String>(
                               isExpanded: true,
                               value: establecimientoSeleccionadoId,
                               underline: const SizedBox(),
@@ -681,50 +723,38 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
+                                      child: CircularProgressIndicator(strokeWidth: 2),
                                     )
-                                  : const Icon(Icons.arrow_drop_down,
-                                      color: Color(0xFF2D4059)),
-                              items: establecimientosDisponibles
-                                  .map((establecimiento) {
+                                  : const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
+                              items: establecimientos.map((e) {
                                 return DropdownMenuItem<String>(
-                                  value: establecimiento['id'],
+                                  value: e.id,
                                   child: Text(
-                                    establecimiento['nombre'] ?? 'Sin nombre',
-                                    style: const TextStyle(
-                                        color: Color(0xFF2D4059)),
+                                    e.nombre ?? 'Sin nombre',
+                                    style: const TextStyle(color: Color(0xFF2D4059)),
                                   ),
                                 );
                               }).toList(),
                               onChanged: cargandoEstablecimientos
                                   ? null
                                   : (nuevoId) async {
-                                      if (nuevoId != null &&
-                                          nuevoId !=
-                                              establecimientoSeleccionadoId) {
-                                        final nuevoEstablecimiento =
-                                            establecimientosDisponibles
-                                                .firstWhere(
-                                                    (e) => e['id'] == nuevoId);
+                                      if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
+                                        final nuevoEstablecimiento = establecimientos.firstWhere((e) => e.id == nuevoId);
 
-                                        final confirmar = await showDialog(
+                                        final confirmar = await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title:
-                                                const Text('Confirmar cambio'),
+                                            title: const Text('Confirmar cambio'),
                                             content: Text(
-                                              '¿Estás seguro de cambiar al establecimiento ${nuevoEstablecimiento['nombre']}?',
+                                              '¿Estás seguro de cambiar al establecimiento ${nuevoEstablecimiento.nombre}?',
                                             ),
                                             actions: [
                                               TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
+                                                onPressed: () => Navigator.pop(context, false),
                                                 child: const Text('Cancelar'),
                                               ),
                                               TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
+                                                onPressed: () => Navigator.pop(context, true),
                                                 child: const Text('Aceptar'),
                                               ),
                                             ],
@@ -732,23 +762,70 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                                         );
 
                                         if (confirmar == true) {
-                                          setState(() {
-                                            establecimientoSeleccionadoId =
-                                                nuevoId;
-                                            establecimientoSeleccionado =
-                                                nuevoEstablecimiento;
-                                          });
-                                          await _cambiarEstablecimiento(
-                                              nuevoEstablecimiento);
+                                          final supabase = Supabase.instance.client;
+                                          final user = supabase.auth.currentUser;
+                                          if (user != null) {
+                                            try {
+                                              final antiguoPrincipalId = establecimientoSeleccionadoId;
+
+                                              // 1️⃣ Insertar antiguo principal en usuarios_establecimientos si no existe
+                                              if (antiguoPrincipalId != null) {
+                                                final existing = await supabase
+                                                    .from('usuarios_establecimientos')
+                                                    .select()
+                                                    .eq('id_usuario', user.id)
+                                                    .eq('id_establecimiento', antiguoPrincipalId);
+
+                                                if ((existing as List).isEmpty) {
+                                                  await supabase.from('usuarios_establecimientos').insert({
+                                                    'id_usuario': user.id,
+                                                    'id_establecimiento': antiguoPrincipalId,
+                                                  });
+                                                }
+                                              }
+
+                                              // 2️⃣ Eliminar el nuevo seleccionado de usuarios_establecimientos
+                                              await supabase
+                                                  .from('usuarios_establecimientos')
+                                                  .delete()
+                                                  .eq('id_usuario', user.id)
+                                                  .eq('id_establecimiento', nuevoId);
+
+                                              // 3️⃣ Actualizar usuarios.id_establecimiento
+                                              await supabase
+                                                  .from('usuarios')
+                                                  .update({'id_establecimiento': nuevoId})
+                                                  .eq('id', user.id);
+
+                                              // 4️⃣ Actualizar el estado local
+                                              setState(() {
+                                                establecimientoSeleccionadoId = nuevoId;
+                                                establecimientoSeleccionado = nuevoEstablecimiento;
+                                              });
+
+                                              // 5️⃣ Refrescar provider
+                                              ref.invalidate(usuarioActualProvider);
+
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Establecimiento cambiado con éxito')),
+                                              );
+                                            } catch (e) {
+                                              print('Error al cambiar establecimiento: $e');
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Error al cambiar establecimiento')),
+                                              );
+                                            }
+                                          }
                                         }
                                       }
                                     },
-                            ),
-                          ),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 10),
-                      ],
-
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                       // Logo
                       if (hotelUnico != null &&
                           hotelUnico!['logotipo'] != null) ...[

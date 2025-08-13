@@ -26,7 +26,8 @@ class _HabitacionesScreenState extends ConsumerState<HabitacionesScreen> {
   Future<void> _seleccionarEstablecimientoAutomatico() async {
     final usuario = await ref.read(usuarioActualProvider.future);
 
-    if (usuario.rolNombre?.toLowerCase() == 'gerente' && usuario.idEstablecimiento != null) {
+    // Si es gerente y tiene establecimiento principal, lo seleccionamos automáticamente
+    if (usuario.idEstablecimiento != null && usuario.idEstablecimiento!.isNotEmpty) {
       setState(() {
         establecimientoSeleccionado = usuario.idEstablecimiento!;
       });
@@ -73,22 +74,7 @@ class _HabitacionesScreenState extends ConsumerState<HabitacionesScreen> {
                     );
                   }
 
-                  final usuario = ref.read(usuarioActualProvider);
-                  if (usuario.asData?.value.rolNombre?.toLowerCase() == 'gerente' &&
-                      usuario.asData?.value.idEstablecimiento != null) {
-                    final est = establecimientos.firstWhere(
-                        (e) => e.id == usuario.asData!.value.idEstablecimiento!,
-                        orElse: () => Establecimiento(id: '', nombre: 'No disponible'));
-                    return Text(
-                      'Establecimiento: ${est.nombre}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D4059),
-                      ),
-                    );
-                  }
-
+                  // Dropdown para todos los roles
                   return DropdownButtonFormField<String>(
                     value: establecimientoSeleccionado,
                     decoration: InputDecoration(
