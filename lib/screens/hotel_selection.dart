@@ -439,7 +439,7 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const UsuarioListPage(),
+                      builder: (_) => UsuarioListPage(),
                     ),
                   );
                 },

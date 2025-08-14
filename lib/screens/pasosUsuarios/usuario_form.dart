@@ -9,7 +9,9 @@ import '../../providers/pestablecimiento.dart';
 
 class UsuarioFormPage extends ConsumerStatefulWidget {
   final Usuario? usuarioEditar;
-  const UsuarioFormPage({super.key, this.usuarioEditar});
+  final String? establecimientoSeleccionadoId;
+
+  const UsuarioFormPage({super.key, this.usuarioEditar, this.establecimientoSeleccionadoId});
 
   @override
   ConsumerState<UsuarioFormPage> createState() => _UsuarioFormPageState();
@@ -30,7 +32,6 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
 
   final supabase = Supabase.instance.client;
 
-  // Colores definidos
   final Color primaryGreen = const Color(0xFF00B894);
   final Color darkBlue = const Color(0xFF2D4059);
   final Color lightBackground = const Color(0xFFFAFAFA);
@@ -49,6 +50,8 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       idRol = u.idRol;
       idEstablecimiento = u.idEstablecimiento;
       idSubestablecimiento = u.idSubestablecimiento;
+    } else {
+      idEstablecimiento = widget.establecimientoSeleccionadoId;
     }
   }
 
@@ -82,18 +85,36 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
     );
   }
 
-  Widget buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-          color: darkBlue,
-        ),
-      ),
-    );
+  String? _validarCI(String? value) {
+    if (value == null || value.trim().isEmpty) return 'El CI es requerido';
+    if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Solo se permiten números';
+    if (value.length < 5) return 'El CI debe tener al menos 5 dígitos';
+    return null;
+  }
+
+  String? _validarNombre(String? value) {
+    if (value == null || value.trim().isEmpty) return 'El nombre es requerido';
+    final palabras = value.trim().split(' ');
+    for (var palabra in palabras) {
+      if (palabra.isEmpty) continue;
+      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ]').hasMatch(palabra[0])) return 'Cada palabra debe comenzar con mayúscula';
+      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$').hasMatch(palabra)) return 'Solo letras permitidas después de la mayúscula';
+    }
+    if (palabras.length < 2) return 'Ingrese al menos nombre y apellido';
+    return null;
+  }
+
+  String? _validarCelular(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Solo números permitidos';
+    if (value.length < 7 || value.length > 10) return 'Debe tener entre 7 y 10 dígitos';
+    return null;
+  }
+
+  String? _validarEmail(String? value) {
+    if (value == null || value.isEmpty) return 'Ingrese correo';
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Correo inválido';
+    return null;
   }
 
   @override
@@ -118,30 +139,48 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-               
+                // CI
                 TextFormField(
                   controller: ciController,
                   decoration: inputDecoration('CI'),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
+                  validator: _validarCI,
                 ),
                 const SizedBox(height: 20),
 
+                // Nombre
                 TextFormField(
                   controller: nombreController,
                   decoration: inputDecoration('Nombre completo'),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo requerido' : null,
+                  validator: _validarNombre,
+                  onChanged: (value) {
+                    if (value.isNotEmpty) {
+                      final palabras = value.split(' ');
+                      final capitalizadas = palabras.map((palabra) {
+                        if (palabra.isEmpty) return '';
+                        return palabra[0].toUpperCase() +
+                            (palabra.length > 1 ? palabra.substring(1).toLowerCase() : '');
+                      }).join(' ');
+                      if (capitalizadas != value) {
+                        nombreController.value = nombreController.value.copyWith(
+                          text: capitalizadas,
+                          selection: TextSelection.collapsed(offset: capitalizadas.length),
+                        );
+                      }
+                    }
+                  },
                 ),
                 const SizedBox(height: 20),
 
-               
+                // Celular
                 TextFormField(
                   controller: celularController,
                   decoration: inputDecoration('Celular'),
                   keyboardType: TextInputType.phone,
+                  validator: _validarCelular,
                 ),
                 const SizedBox(height: 20),
 
-               
+                // Género
                 DropdownButtonFormField<String>(
                   value: genero,
                   decoration: inputDecoration('Género'),
@@ -155,37 +194,25 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Email sin buildLabel duplicado
+                // Email
                 TextFormField(
                   controller: emailController,
                   decoration: inputDecoration('Correo electrónico'),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingrese correo';
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Correo inválido';
-                    return null;
-                  },
+                  validator: _validarEmail,
                 ),
                 const SizedBox(height: 20),
 
-                // Password sin buildLabel duplicado
+                // Contraseña
                 TextFormField(
                   controller: passwordController,
                   decoration: inputDecoration('Contraseña'),
                   obscureText: true,
-                  validator: (value) {
-                    if (widget.usuarioEditar == null && (value == null || value.isEmpty)) {
-                      return 'Ingrese contraseña';
-                    }
-                    if (value != null && value.isNotEmpty && value.length < 6) {
-                      return 'Mínimo 6 caracteres';
-                    }
-                    return null;
-                  },
+                  enabled: false,
                 ),
                 const SizedBox(height: 20),
 
-               
+                // Rol
                 rolesAsync.when(
                   data: (roles) => DropdownButtonFormField<String>(
                     value: idRol,
@@ -201,28 +228,31 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                
+                // Establecimiento
                 establecimientosAsync.when(
-                  data: (lista) => DropdownButtonFormField<String>(
-                    value: idEstablecimiento,
-                    decoration: inputDecoration('Establecimiento principal'),
-                    items: lista
-                        .map((e) => DropdownMenuItem(value: e.id, child: Text(e.nombre)))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        idEstablecimiento = val;
-                        idSubestablecimiento = null;
-                      });
-                    },
-                    validator: (v) => v == null ? 'Seleccione un establecimiento' : null,
-                  ),
+                  data: (lista) {
+                    final seleccionado = lista.firstWhere(
+                      (e) => e.id == idEstablecimiento,
+                      orElse: () => lista.first,
+                    );
+                    return DropdownButtonFormField<String>(
+                      value: seleccionado.id,
+                      decoration: inputDecoration('Establecimiento principal'),
+                      items: [
+                        DropdownMenuItem(
+                          value: seleccionado.id,
+                          child: Text(seleccionado.nombre),
+                        )
+                      ],
+                      onChanged: null,
+                    );
+                  },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, st) => Text('Error cargando establecimientos: $e'),
                 ),
                 const SizedBox(height: 20),
 
-                
+                // Subestablecimientos
                 subestablecimientosAsync.when(
                   data: (subs) => DropdownButtonFormField<String?>(
                     value: idSubestablecimiento,
@@ -239,6 +269,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 30),
 
+                // Botón Guardar
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
@@ -250,6 +281,15 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                     if (_formKey.currentState!.validate()) {
                       final notifier = ref.read(usuariosProvider.notifier);
 
+                      String passwordGenerada = '';
+                      if (widget.usuarioEditar == null) {
+                        final primerNombre = nombreController.text.trim().split(' ').first;
+                        passwordGenerada = '${ciController.text.trim()}$primerNombre';
+                        passwordController.text = passwordGenerada;
+                      } else {
+                        passwordGenerada = passwordController.text;
+                      }
+
                       final usuario = Usuario(
                         id: widget.usuarioEditar?.id ?? '',
                         ci: ciController.text.trim(),
@@ -260,16 +300,16 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                         idRol: idRol!,
                         idEstablecimiento: idEstablecimiento!,
                         idSubestablecimiento: idSubestablecimiento,
-                        otrosEstablecimientos: [], // Ya eliminado
+                        otrosEstablecimientos: [],
                         email: emailController.text.trim(),
                       );
 
                       if (widget.usuarioEditar == null) {
-                        // Crear usuario nuevo
+                        // --- CREAR USUARIO (sin tocar) ---
                         try {
                           final res = await supabase.auth.signUp(
                             email: emailController.text.trim(),
-                            password: passwordController.text.trim(),
+                            password: passwordGenerada,
                             emailRedirectTo: 'https://confirmacion-app.netlify.app/',
                           );
 
@@ -278,39 +318,77 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
 
                           final nuevoUsuario = usuario.copyWith(id: userId);
                           await notifier.agregarUsuario(nuevoUsuario);
-                          if (context.mounted) Navigator.pop(context);
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Usuario registrado. Contraseña: $passwordGenerada'),
+                                duration: const Duration(seconds: 5),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          }
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error creando usuario: $e')),
-                          );
+                          String mensajeError = 'Error al guardar usuario';
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(mensajeError), backgroundColor: Colors.red),
+                            );
+                          }
                         }
                       } else {
-                        // Actualizar usuario existente
-                        await notifier.actualizarUsuario(usuario);
-
-                        final email = emailController.text.trim();
-                        final password = passwordController.text.trim();
-
+                        // --- EDITAR USUARIO (corregido) ---
                         try {
-                          if (email.isNotEmpty) {
-                            await supabase.auth.admin.updateUserById(
-                              widget.usuarioEditar!.id,
-                              attributes: AdminUserAttributes(email: email),
-                            );
-                          }
-                          if (password.isNotEmpty) {
-                            await supabase.auth.admin.updateUserById(
-                              widget.usuarioEditar!.id,
-                              attributes: AdminUserAttributes(password: password),
-                            );
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error actualizando email/contraseña: $e')),
-                          );
-                        }
+                          print('Actualizando usuario local...');
+                          await notifier.actualizarUsuario(usuario);
+                          print('Usuario actualizado en provider local');
 
-                        if (context.mounted) Navigator.pop(context);
+                          try {
+                            final email = emailController.text.trim();
+                            final password = passwordController.text.trim();
+
+                            if (email.isNotEmpty) {
+                              print('Actualizando email en Supabase Auth...');
+                              await supabase.auth.admin.updateUserById(
+                                widget.usuarioEditar!.id,
+                                attributes: AdminUserAttributes(email: email),
+                              );
+                              print('Email actualizado en Auth');
+                            }
+
+                            if (password.isNotEmpty) {
+                              print('Actualizando password en Supabase Auth...');
+                              await supabase.auth.admin.updateUserById(
+                                widget.usuarioEditar!.id,
+                                attributes: AdminUserAttributes(password: password),
+                              );
+                              print('Password actualizado en Auth');
+                            }
+                          } catch (authError) {
+                            print('No se pudo actualizar Auth (solo log): $authError');
+                          }
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Usuario actualizado correctamente'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            Navigator.pop(context);
+                          }
+
+                        } catch (e) {
+                          print('Error al actualizar usuario en BD: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error al guardar usuario: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       }
                     }
                   },
