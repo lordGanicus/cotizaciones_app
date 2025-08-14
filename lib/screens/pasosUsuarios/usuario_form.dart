@@ -229,7 +229,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Rol + Otros establecimientos si es gerente
+                // ---- BLOQUE DE ROL Y ESTABLECIMIENTOS ----
                 rolesAsync.when(
                   data: (roles) {
                     final rolSeleccionado =
@@ -260,25 +260,27 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                               v == null ? 'Seleccione un rol' : null,
                         ),
                         const SizedBox(height: 20),
-                        if (rolSeleccionado?.nombre.toLowerCase() == 'gerente')
-                          establecimientosAsync.when(
-                            data: (lista) {
-                              final principal = lista.firstWhere(
-                                (e) => e.id == idEstablecimiento,
-                                orElse: () => lista.first,
-                              );
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                      'Establecimiento principal: ${principal.nombre}',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 10),
-                                  Text('Otros establecimientos:'),
-                                  ...lista
-                                      .where((e) => e.id != principal.id)
-                                      .map((est) {
+                        establecimientosAsync.when(
+                          data: (lista) {
+                            // Mostrar siempre el establecimiento principal
+                            final principal = lista.firstWhere(
+                              (e) => e.id == idEstablecimiento,
+                              orElse: () => lista.first,
+                            );
+
+                            List<Widget> children = [
+                              Text('Establecimiento principal: ${principal.nombre}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 10),
+                            ];
+
+                            // Si es gerente, mostrar otros establecimientos
+                            if (rolSeleccionado?.nombre.toLowerCase() == 'gerente') {
+                              children.add(const Text('Otros establecimientos:'));
+                              children.addAll(lista
+                                  .where((e) => e.id != principal.id)
+                                  .map((est) {
                                     return CheckboxListTile(
                                       title: Text(est.nombre),
                                       value: otrosIds.contains(est.id),
@@ -292,14 +294,18 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                                         });
                                       },
                                     );
-                                  }).toList(),
-                                ],
-                              );
-                            },
-                            loading: () => const CircularProgressIndicator(),
-                            error: (e, st) =>
-                                Text('Error cargando establecimientos: $e'),
-                          ),
+                                  }).toList());
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: children,
+                            );
+                          },
+                          loading: () => const CircularProgressIndicator(),
+                          error: (e, st) =>
+                              Text('Error cargando establecimientos: $e'),
+                        ),
                       ],
                     );
                   },
