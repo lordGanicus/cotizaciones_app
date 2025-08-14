@@ -174,7 +174,7 @@ class _ResumenFinalCotizacionSalonPageState
                 horaFin = decoded['hora_fin'];
                 nombreSalon = decoded['nombre_salon'] ?? '';
                 tipoArmado = decoded['tipo_armado'] ?? '';
-                participantes = decoded['participantes'] ?? 0;
+                participantes = decoded['participantes'] ??  0;
               }
             } catch (_) {}
           }

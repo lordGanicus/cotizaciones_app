@@ -6,12 +6,14 @@ import '../../models/usuario.dart';
 import '../../providers/usuarios_provider.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/pestablecimiento.dart';
+import 'package:collection/collection.dart'; // firstWhereOrNull
 
 class UsuarioFormPage extends ConsumerStatefulWidget {
   final Usuario? usuarioEditar;
   final String? establecimientoSeleccionadoId;
 
-  const UsuarioFormPage({super.key, this.usuarioEditar, this.establecimientoSeleccionadoId});
+  const UsuarioFormPage(
+      {super.key, this.usuarioEditar, this.establecimientoSeleccionadoId});
 
   @override
   ConsumerState<UsuarioFormPage> createState() => _UsuarioFormPageState();
@@ -29,6 +31,7 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
   String? idRol;
   String? idEstablecimiento;
   String? idSubestablecimiento;
+  final Set<String> otrosIds = {}; // Para los otros establecimientos
 
   final supabase = Supabase.instance.client;
 
@@ -50,6 +53,9 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       idRol = u.idRol;
       idEstablecimiento = u.idEstablecimiento;
       idSubestablecimiento = u.idSubestablecimiento;
+      if (u.otrosEstablecimientos != null) {
+        otrosIds.addAll(u.otrosEstablecimientos!);
+      }
     } else {
       idEstablecimiento = widget.establecimientoSeleccionadoId;
     }
@@ -97,8 +103,10 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
     final palabras = value.trim().split(' ');
     for (var palabra in palabras) {
       if (palabra.isEmpty) continue;
-      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ]').hasMatch(palabra[0])) return 'Cada palabra debe comenzar con mayúscula';
-      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$').hasMatch(palabra)) return 'Solo letras permitidas después de la mayúscula';
+      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ]').hasMatch(palabra[0]))
+        return 'Cada palabra debe comenzar con mayúscula';
+      if (!RegExp(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$').hasMatch(palabra))
+        return 'Solo letras permitidas después de la mayúscula';
     }
     if (palabras.length < 2) return 'Ingrese al menos nombre y apellido';
     return null;
@@ -107,13 +115,15 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
   String? _validarCelular(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Solo números permitidos';
-    if (value.length < 7 || value.length > 10) return 'Debe tener entre 7 y 10 dígitos';
+    if (value.length < 7 || value.length > 10)
+      return 'Debe tener entre 7 y 10 dígitos';
     return null;
   }
 
   String? _validarEmail(String? value) {
     if (value == null || value.isEmpty) return 'Ingrese correo';
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Correo inválido';
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+      return 'Correo inválido';
     return null;
   }
 
@@ -129,7 +139,8 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
       backgroundColor: lightBackground,
       appBar: AppBar(
         backgroundColor: darkBlue,
-        title: Text(widget.usuarioEditar == null ? 'Crear usuario' : 'Editar usuario'),
+        title: Text(
+            widget.usuarioEditar == null ? 'Crear usuario' : 'Editar usuario'),
       ),
       body: SafeArea(
         child: Form(
@@ -158,12 +169,16 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                       final capitalizadas = palabras.map((palabra) {
                         if (palabra.isEmpty) return '';
                         return palabra[0].toUpperCase() +
-                            (palabra.length > 1 ? palabra.substring(1).toLowerCase() : '');
+                            (palabra.length > 1
+                                ? palabra.substring(1).toLowerCase()
+                                : '');
                       }).join(' ');
                       if (capitalizadas != value) {
-                        nombreController.value = nombreController.value.copyWith(
+                        nombreController.value =
+                            nombreController.value.copyWith(
                           text: capitalizadas,
-                          selection: TextSelection.collapsed(offset: capitalizadas.length),
+                          selection: TextSelection.collapsed(
+                              offset: capitalizadas.length),
                         );
                       }
                     }
@@ -185,8 +200,10 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                   value: genero,
                   decoration: inputDecoration('Género'),
                   items: const [
-                    DropdownMenuItem(value: 'masculino', child: Text('Masculino')),
-                    DropdownMenuItem(value: 'femenino', child: Text('Femenino')),
+                    DropdownMenuItem(
+                        value: 'masculino', child: Text('Masculino')),
+                    DropdownMenuItem(
+                        value: 'femenino', child: Text('Femenino')),
                     DropdownMenuItem(value: 'otro', child: Text('Otro')),
                   ],
                   onChanged: (value) => setState(() => genero = value),
@@ -212,43 +229,83 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Rol
+                // Rol + Otros establecimientos si es gerente
                 rolesAsync.when(
-                  data: (roles) => DropdownButtonFormField<String>(
-                    value: idRol,
-                    decoration: inputDecoration('Rol'),
-                    items: roles
-                        .map((r) => DropdownMenuItem(value: r.id, child: Text(r.nombre)))
-                        .toList(),
-                    onChanged: (value) => setState(() => idRol = value),
-                    validator: (v) => v == null ? 'Seleccione un rol' : null,
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Text('Error cargando roles: $e'),
-                ),
-                const SizedBox(height: 20),
+                  data: (roles) {
+                    final rolSeleccionado =
+                        roles.firstWhereOrNull((r) => r.id == idRol);
 
-                // Establecimiento
-                establecimientosAsync.when(
-                  data: (lista) {
-                    final seleccionado = lista.firstWhere(
-                      (e) => e.id == idEstablecimiento,
-                      orElse: () => lista.first,
-                    );
-                    return DropdownButtonFormField<String>(
-                      value: seleccionado.id,
-                      decoration: inputDecoration('Establecimiento principal'),
-                      items: [
-                        DropdownMenuItem(
-                          value: seleccionado.id,
-                          child: Text(seleccionado.nombre),
-                        )
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: idRol,
+                          decoration: inputDecoration('Rol'),
+                          items: roles
+                              .map((r) => DropdownMenuItem(
+                                  value: r.id, child: Text(r.nombre)))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              idRol = value;
+                              final seleccionado =
+                                  roles.firstWhereOrNull((r) => r.id == value);
+                              if (seleccionado?.nombre.toLowerCase() !=
+                                  'gerente') {
+                                otrosIds.clear();
+                              }
+                            });
+                          },
+                          validator: (v) =>
+                              v == null ? 'Seleccione un rol' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        if (rolSeleccionado?.nombre.toLowerCase() == 'gerente')
+                          establecimientosAsync.when(
+                            data: (lista) {
+                              final principal = lista.firstWhere(
+                                (e) => e.id == idEstablecimiento,
+                                orElse: () => lista.first,
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      'Establecimiento principal: ${principal.nombre}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 10),
+                                  Text('Otros establecimientos:'),
+                                  ...lista
+                                      .where((e) => e.id != principal.id)
+                                      .map((est) {
+                                    return CheckboxListTile(
+                                      title: Text(est.nombre),
+                                      value: otrosIds.contains(est.id),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          if (val == true) {
+                                            otrosIds.add(est.id);
+                                          } else {
+                                            otrosIds.remove(est.id);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ],
+                              );
+                            },
+                            loading: () => const CircularProgressIndicator(),
+                            error: (e, st) =>
+                                Text('Error cargando establecimientos: $e'),
+                          ),
                       ],
-                      onChanged: null,
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Text('Error cargando establecimientos: $e'),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Text('Error cargando roles: $e'),
                 ),
                 const SizedBox(height: 20),
 
@@ -256,16 +313,22 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                 subestablecimientosAsync.when(
                   data: (subs) => DropdownButtonFormField<String?>(
                     value: idSubestablecimiento,
-                    decoration: inputDecoration('Subestablecimiento (opcional)'),
+                    decoration:
+                        inputDecoration('Subestablecimiento (opcional)'),
                     isExpanded: true,
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('Ninguno')),
-                      ...subs.map((s) => DropdownMenuItem(value: s.id, child: Text(s.nombre))),
+                      const DropdownMenuItem(
+                          value: null, child: Text('Ninguno')),
+                      ...subs.map((s) =>
+                          DropdownMenuItem(value: s.id, child: Text(s.nombre))),
                     ],
-                    onChanged: (value) => setState(() => idSubestablecimiento = value),
+                    onChanged: (value) =>
+                        setState(() => idSubestablecimiento = value),
                   ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Text('Error cargando subestablecimientos: $e'),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, st) =>
+                      Text('Error cargando subestablecimientos: $e'),
                 ),
                 const SizedBox(height: 30),
 
@@ -274,8 +337,10 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
@@ -283,8 +348,10 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
 
                       String passwordGenerada = '';
                       if (widget.usuarioEditar == null) {
-                        final primerNombre = nombreController.text.trim().split(' ').first;
-                        passwordGenerada = '${ciController.text.trim()}$primerNombre';
+                        final primerNombre =
+                            nombreController.text.trim().split(' ').first;
+                        passwordGenerada =
+                            '${ciController.text.trim()}$primerNombre';
                         passwordController.text = passwordGenerada;
                       } else {
                         passwordGenerada = passwordController.text;
@@ -300,21 +367,28 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                         idRol: idRol!,
                         idEstablecimiento: idEstablecimiento!,
                         idSubestablecimiento: idSubestablecimiento,
-                        otrosEstablecimientos: [],
+                        otrosEstablecimientos: (rolesAsync.asData?.value
+                                    .firstWhereOrNull((r) => r.id == idRol)
+                                    ?.nombre
+                                    .toLowerCase() ==
+                                'gerente')
+                            ? otrosIds.toList()
+                            : [],
                         email: emailController.text.trim(),
                       );
 
                       if (widget.usuarioEditar == null) {
-                        // --- CREAR USUARIO (sin tocar) ---
                         try {
                           final res = await supabase.auth.signUp(
                             email: emailController.text.trim(),
                             password: passwordGenerada,
-                            emailRedirectTo: 'https://confirmacion-app.netlify.app/',
+                            emailRedirectTo:
+                                'https://confirmacion-app.netlify.app/',
                           );
-
                           final userId = res.user?.id;
-                          if (userId == null) throw Exception('No se pudo registrar en Supabase Auth');
+                          if (userId == null)
+                            throw Exception(
+                                'No se pudo registrar en Supabase Auth');
 
                           final nuevoUsuario = usuario.copyWith(id: userId);
                           await notifier.agregarUsuario(nuevoUsuario);
@@ -322,70 +396,62 @@ class _UsuarioFormPageState extends ConsumerState<UsuarioFormPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Usuario registrado. Contraseña: $passwordGenerada'),
+                                content: Text(
+                                    'Usuario registrado. Contraseña: $passwordGenerada'),
                                 duration: const Duration(seconds: 5),
                               ),
                             );
                             Navigator.pop(context);
                           }
                         } catch (e) {
-                          String mensajeError = 'Error al guardar usuario';
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(mensajeError), backgroundColor: Colors.red),
+                              SnackBar(
+                                  content: Text('Error al guardar usuario: $e'),
+                                  backgroundColor: Colors.red),
                             );
                           }
                         }
                       } else {
-                        // --- EDITAR USUARIO (corregido) ---
                         try {
-                          print('Actualizando usuario local...');
                           await notifier.actualizarUsuario(usuario);
-                          print('Usuario actualizado en provider local');
 
                           try {
                             final email = emailController.text.trim();
                             final password = passwordController.text.trim();
 
                             if (email.isNotEmpty) {
-                              print('Actualizando email en Supabase Auth...');
                               await supabase.auth.admin.updateUserById(
                                 widget.usuarioEditar!.id,
                                 attributes: AdminUserAttributes(email: email),
                               );
-                              print('Email actualizado en Auth');
                             }
 
                             if (password.isNotEmpty) {
-                              print('Actualizando password en Supabase Auth...');
                               await supabase.auth.admin.updateUserById(
                                 widget.usuarioEditar!.id,
-                                attributes: AdminUserAttributes(password: password),
+                                attributes:
+                                    AdminUserAttributes(password: password),
                               );
-                              print('Password actualizado en Auth');
                             }
-                          } catch (authError) {
-                            print('No se pudo actualizar Auth (solo log): $authError');
-                          }
+                          } catch (_) {}
 
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Usuario actualizado correctamente'),
+                                content:
+                                    Text('Usuario actualizado correctamente'),
                                 backgroundColor: Colors.green,
                               ),
                             );
                             Navigator.pop(context);
                           }
-
                         } catch (e) {
-                          print('Error al actualizar usuario en BD: $e');
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Error al guardar usuario: $e'),
-                                backgroundColor: Colors.red,
-                              ),
+                                  content: Text('Error al guardar usuario: $e'),
+                                  backgroundColor: Colors.red),
                             );
                           }
                         }

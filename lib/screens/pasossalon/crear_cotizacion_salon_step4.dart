@@ -10,14 +10,14 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
   final String idCotizacion;
   final String idEstablecimiento;
   final String idUsuario;
-  final String? idSubestablecimiento; // <-- agregado
+  final String? idSubestablecimiento;
 
   Paso4CotizacionSalonPage({
     Key? key,
     required this.idCotizacion,
     required this.idEstablecimiento,
     required this.idUsuario,
-    this.idSubestablecimiento, // <-- agregado
+    this.idSubestablecimiento,
   }) : super(key: key);
 
   final Color primaryGreen = const Color(0xFF00B894);
@@ -26,7 +26,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
   final Color cardBackground = Colors.white;
   final Color textColor = const Color(0xFF2D4059);
   final Color secondaryTextColor = const Color(0xFF555555);
-  final Color highlightColor = Color(0xFF00B894).withAlpha((255 * 0.1).toInt()); 
+  final Color highlightColor = Color(0xFF00B894).withAlpha((255 * 0.1).toInt());
 
   Widget _buildSectionTitle(String title, {IconData? icon}) {
     return Padding(
@@ -143,7 +143,8 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
     );
     final total = subtotalSalon + subtotalAdicionales;
 
-    final minutosEvento = cotizacion.horaFin.difference(cotizacion.horaInicio).inMinutes;
+    final minutosEvento =
+        cotizacion.horaFin.difference(cotizacion.horaInicio).inMinutes;
     final horasValidas = minutosEvento > 0 ? (minutosEvento / 60).ceil() : 1;
 
     return Scaffold(
@@ -160,6 +161,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Detalles del evento
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -176,11 +178,16 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                     _buildDetailItem('Cliente:', cotizacion.nombreCliente),
                     _buildDetailItem('CI/NIT:', cotizacion.ciCliente),
                     _buildDetailItem('Tipo de evento:', cotizacion.tipoEvento),
-                    _buildDetailItem('Fecha:', _formatearFecha(cotizacion.fechaEvento)),
-                    _buildDetailItem('Horario:', '${_formatearHora(cotizacion.horaInicio)} - ${_formatearHora(cotizacion.horaFin)}'),
-                    _buildDetailItem('Participantes:', cotizacion.participantes.toString()),
+                    _buildDetailItem('Fecha:',
+                        _formatearFecha(cotizacion.fechaEvento)),
+                    _buildDetailItem(
+                        'Horario',
+                        '${_formatearHora(cotizacion.horaInicio)} - ${_formatearHora(cotizacion.horaFin)}'),
+                    _buildDetailItem(
+                        'Participantes:', cotizacion.participantes.toString()),
                     _buildDetailItem('Tipo de armado:', cotizacion.tipoArmado),
-                    _buildDetailItem('Salón:', '${cotizacion.nombreSalon} (Capacidad: ${cotizacion.capacidad})'),
+                    _buildDetailItem('Salón:',
+                        '${cotizacion.nombreSalon} (Capacidad: ${cotizacion.capacidad})'),
                   ],
                 ),
               ),
@@ -188,6 +195,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
+            // Alquiler salón
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -199,7 +207,8 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('Alquiler del salón', icon: Icons.meeting_room),
+                    _buildSectionTitle(
+                        'Alquiler del salón', icon: Icons.meeting_room),
                     const SizedBox(height: 8),
                     _buildPriceItem(
                       '$horasValidas hora${horasValidas > 1 ? 's' : ''}',
@@ -212,6 +221,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
+            // Items adicionales
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -241,7 +251,8 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Text(
@@ -263,7 +274,8 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${i.cantidad} x ${i.precioUnitario.toStringAsFixed(2)} Bs',
@@ -286,6 +298,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
+            // Total
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -308,6 +321,7 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
 
             const SizedBox(height: 30),
 
+            // Botón guardar
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -315,6 +329,11 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                   final supabase = Supabase.instance.client;
 
                   try {
+                    // 🔹 PRINT ARRIBA: antes de cualquier operación
+                    print('DEBUG: Cotización recibida: $cotizacion');
+                    print('DEBUG: Participantes: ${cotizacion.participantes}');
+                    print('DEBUG: Total calculado: $total Bs');
+
                     String? idCliente;
 
                     // Buscar cliente por CI
@@ -359,12 +378,22 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                       'estado': 'borrador',
                       'total': total,
                       'id_cliente': idCliente,
-                      //'id_subestablecimiento': cotizacion.idSubestablecimiento,
                     }).select().single();
 
                     final idNuevaCotizacion = cotizacionRes['id'] as String;
 
                     // Insertar item principal (alquiler del salón)
+                    final detallesSalon = {
+                      'fecha': cotizacion.fechaEvento.toIso8601String(),
+                      'hora_inicio': cotizacion.horaInicio.toIso8601String(),
+                      'hora_fin': cotizacion.horaFin.toIso8601String(),
+                      'tipo_armado': cotizacion.tipoArmado,
+                      'nombre_salon': cotizacion.nombreSalon,
+                      'capacidad': cotizacion.capacidad,
+                      'participantes': cotizacion.participantes, 
+                    };
+                    print('DEBUG: Insertando item principal con detalles: $detallesSalon');
+
                     await supabase.from('items_cotizacion').insert({
                       'id_cotizacion': idNuevaCotizacion,
                       'unidad': 'Hora',
@@ -372,19 +401,13 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                       'precio_unitario': subtotalSalon / horasValidas,
                       'descripcion': 'Alquiler de salón para evento ${cotizacion.tipoEvento} (${cotizacion.participantes} personas)',
                       'tipo': 'salon',
-                     // 'id_subestablecimiento': cotizacion.idSubestablecimiento,
-                      'detalles': jsonEncode({
-                        'fecha': cotizacion.fechaEvento.toIso8601String(),
-                        'hora_inicio': cotizacion.horaInicio.toIso8601String(),
-                        'hora_fin': cotizacion.horaFin.toIso8601String(),
-                        'tipo_armado': cotizacion.tipoArmado,
-                        'nombre_salon': cotizacion.nombreSalon,
-                        'capacidad': cotizacion.capacidad,
-                      }),
+                      'detalles': jsonEncode(detallesSalon),
                     });
 
                     // Insertar ítems adicionales
                     for (final i in cotizacion.itemsAdicionales) {
+                      final detallesAdicional = {'tipo': 'adicional'};
+                      print('DEBUG: Insertando item adicional: ${i.descripcion}, detalles: $detallesAdicional');
                       await supabase.from('items_cotizacion').insert({
                         'id_cotizacion': idNuevaCotizacion,
                         'unidad': 'Unidad',
@@ -392,9 +415,13 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                         'precio_unitario': i.precioUnitario,
                         'descripcion': i.descripcion,
                         'tipo': 'salon',
-                        'detalles': jsonEncode({'tipo': 'adicional'}),
+                        'detalles': jsonEncode(detallesAdicional),
                       });
                     }
+
+                    // 🔹 PRINT ABAJO: confirmación
+                    print('DEBUG: Cotización guardada correctamente con id: $idNuevaCotizacion');
+                    print('DEBUG: Total guardado: $total Bs');
 
                     if (!context.mounted) return;
 

@@ -23,19 +23,15 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
     await rootBundle.load('assets/fonts/acterum-signature-font.ttf'),
   );
 
-  // Estilos generales
+  // Colores y estilos generales
+  final azulOscuro = PdfColor.fromInt(0xFF0D3B66); // azul oscuro fuerte
   final estiloTitulo = pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
   final estiloNegrita = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
   final estiloNormal = pw.TextStyle(fontSize: 11);
   final estiloFirma = pw.TextStyle(
     fontSize: 28,
     font: acterumSignature,
-    color: PdfColors.blue800,
-  );
-  final estiloNombreFirma = pw.TextStyle(
-    fontSize: 26,
-    fontWeight: pw.FontWeight.bold,
-    color: PdfColors.blue800,
+    color: azulOscuro, // firma azul oscuro
   );
 
   // Carga de imágenes
@@ -198,9 +194,10 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                       pw.Text(
                         'Bs ${totalFinal.toStringAsFixed(2)}',
                         style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.blue),
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          color: azulOscuro,
+                        ),
                       ),
                     ],
                   ),
@@ -232,7 +229,6 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                 children: [
                   pw.Text('Condiciones Generales', style: estiloTitulo),
                   pw.SizedBox(height: 14),
-
                   ..._condicionesGenerales(estiloNegrita, estiloNormal),
                   pw.SizedBox(height: 30),
                   pw.Text('Atentamente:', style: estiloNegrita),
@@ -241,7 +237,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                   pw.Center(
                     child: pw.Column(
                       children: [
-                       
+                        // Solo la firma en azul oscuro
                         pw.Text(
                           'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
                           style: estiloFirma,
@@ -252,21 +248,6 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                           height: 2,
                           color: PdfColors.grey,
                         ),
-                        pw.SizedBox(height: 8),
-
-                        pw.Text(
-                          'Lic. $nombreUsuario',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.black,  // color negro en vez de azul
-                          ),
-                        ),
-                        pw.SizedBox(height: 4),
-
-                        pw.Text('Gerente de Ventas', style: estiloNormal),
-                        pw.SizedBox(height: 2),
-                        pw.Text(nombreHotel, style: estiloNormal),
                       ],
                     ),
                   ),

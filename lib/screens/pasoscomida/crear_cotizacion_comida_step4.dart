@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../models/itemComida.dart';
 import '../../providers/cotizacion_comida_provider.dart';
 import 'resumen_final_factura.dart';
-import 'crear_cotizacion_comida_step1.dart';
 
 class CrearCotizacionComidaStep4 extends ConsumerStatefulWidget {
   final String idCotizacion;
@@ -53,7 +52,7 @@ class _CrearCotizacionComidaStep4State
     try {
       final idCotizacion = widget.idCotizacion;
 
-      // 1. Buscar cliente por CI en la tabla clientes
+      // Buscar o crear cliente
       final clienteExistente = await supabase
           .from('clientes')
           .select('id')
@@ -61,40 +60,42 @@ class _CrearCotizacionComidaStep4State
           .maybeSingle();
 
       String idCliente;
-
       if (clienteExistente == null) {
-        // 2. Insertar cliente si no existe
         final insertCliente = await supabase.from('clientes').insert({
           'nombre_completo': cotizacion.nombreCliente,
           'ci': cotizacion.ciCliente,
         }).select('id').single();
-
         idCliente = insertCliente['id'] as String;
       } else {
-        // Cliente ya existe, tomar su id
         idCliente = clienteExistente['id'] as String;
       }
 
-      // 3. Actualizar cotización con id_cliente y total
+      // Calcular total
       final totalCalculado =
           cotizacion.itemsComida.fold<double>(0, (sum, i) => sum + i.subtotal);
 
-      await supabase
-          .from('cotizaciones')
-          .update({
-            'total': totalCalculado,
-            'id_cliente': idCliente,
-          })
-          .eq('id', idCotizacion);
-
-      // 4. Eliminar items anteriores y volver a insertar los nuevos
+      // Eliminar items existentes
       await supabase
           .from('items_cotizacion')
           .delete()
           .eq('id_cotizacion', idCotizacion)
           .eq('tipo', 'comida');
 
+      // Preparar items con detalles incluyendo fecha y hora
       final itemsMap = cotizacion.itemsComida.map((item) {
+        final detalles = {
+          'descripcion': item.descripcion,
+          'cantidad': item.cantidad,
+          'precio_unitario': item.precioUnitario,
+          'subtotal': item.subtotal,
+          'fecha_evento': cotizacion.fechaEvento != null
+              ? DateFormat('dd/MM/yyyy').format(cotizacion.fechaEvento!)
+              : null,
+          'hora_evento': cotizacion.horaEvento != null
+              ? '${cotizacion.horaEvento!.hour.toString().padLeft(2, '0')}:${cotizacion.horaEvento!.minute.toString().padLeft(2, '0')}'
+              : null,
+        };
+
         return {
           'id_cotizacion': idCotizacion,
           'servicio': item.descripcion,
@@ -102,12 +103,21 @@ class _CrearCotizacionComidaStep4State
           'cantidad': item.cantidad,
           'precio_unitario': item.precioUnitario,
           'descripcion': item.descripcion,
-          'detalles': {},
+          'detalles': detalles, // Guardamos todo aquí
           'tipo': 'comida',
         };
       }).toList();
 
       await supabase.from('items_cotizacion').insert(itemsMap);
+
+      // Actualizar total en la cotización
+      await supabase
+          .from('cotizaciones')
+          .update({
+            'total': totalCalculado,
+            'id_cliente': idCliente,
+          })
+          .eq('id', idCotizacion);
 
       setState(() => _isSaving = false);
 
@@ -118,7 +128,7 @@ class _CrearCotizacionComidaStep4State
             idCotizacion: idCotizacion,
             nombreCliente: cotizacion.nombreCliente,
             ciCliente: cotizacion.ciCliente,
-            idSubestablecimiento: widget.idSubestablecimiento, /********************************* Añadir este parámetro*/
+            idSubestablecimiento: widget.idSubestablecimiento,
           ),
         ),
       );
@@ -134,6 +144,14 @@ class _CrearCotizacionComidaStep4State
   @override
   Widget build(BuildContext context) {
     final cotizacion = ref.watch(cotizacionComidaProvider);
+
+    // Formatear fecha y hora para mostrar
+    String fechaEvento = cotizacion.fechaEvento != null
+        ? DateFormat('dd/MM/yyyy').format(cotizacion.fechaEvento!)
+        : '-';
+    String horaEvento = cotizacion.horaEvento != null
+        ? '${cotizacion.horaEvento!.hour.toString().padLeft(2, '0')}:${cotizacion.horaEvento!.minute.toString().padLeft(2, '0')}'
+        : '-';
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -170,6 +188,26 @@ class _CrearCotizacionComidaStep4State
                   : '${cotizacion.nombreCliente} (CI: ${cotizacion.ciCliente})',
               style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
             ),
+            const SizedBox(height: 12),
+            Text(
+              'Fecha del Evento:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
+            ),
+            Text(
+              fechaEvento,
+              style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hora del Evento:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
+            ),
+            Text(
+              horaEvento,
+              style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
+            ),
             const SizedBox(height: 20),
             Text(
               'Platos Agregados:',
@@ -185,8 +223,8 @@ class _CrearCotizacionComidaStep4State
                   return ListTile(
                     title: Text(
                       item.descripcion,
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, color: darkBlue),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, color: darkBlue),
                     ),
                     subtitle: Text(
                       'Cantidad: ${item.cantidad}    Precio unitario: Bs ${item.precioUnitario.toStringAsFixed(2)}\nSubtotal: Bs ${item.subtotal.toStringAsFixed(2)}',
@@ -242,8 +280,8 @@ class _CrearCotizacionComidaStep4State
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

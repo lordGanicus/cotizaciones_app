@@ -18,19 +18,21 @@ Future<Uint8List> generarPdfCotizacionComida({
 }) async {
   final pdf = pw.Document();
 
-  // Cargar fuente para firma
+  // Fuente para firma
   final acterumSignature = pw.Font.ttf(
     await rootBundle.load('assets/fonts/acterum-signature-font.ttf'),
   );
 
   // Estilos
+  final azulOscuroFirma = PdfColor.fromInt(0xFF0D3B66);
+  final azulOscuro = PdfColor.fromInt(0xFF0D3B66);
   final estiloTitulo = pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
   final estiloNegrita = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
   final estiloNormal = pw.TextStyle(fontSize: 11);
   final estiloFirma = pw.TextStyle(
     fontSize: 28,
     font: acterumSignature,
-    color: PdfColors.blue800,
+     color: azulOscuroFirma, // azul muy oscuro
   );
 
   // Carga de imágenes
@@ -51,10 +53,16 @@ Future<Uint8List> generarPdfCotizacionComida({
     } catch (_) {}
   }
 
-  String formatFecha(dynamic fecha) {
+  // Función para fecha y hora
+  String formatFechaHora(dynamic fecha) {
     try {
-      final dt = DateTime.parse(fecha.toString());
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      if (fecha == null) return 'N/D';
+      final dtLocal = fecha is DateTime ? fecha.toLocal() : DateTime.parse(fecha.toString()).toLocal();
+      return '${dtLocal.day.toString().padLeft(2, '0')}/'
+          '${dtLocal.month.toString().padLeft(2, '0')}/'
+          '${dtLocal.year} '
+          '${dtLocal.hour.toString().padLeft(2, '0')}:'
+          '${dtLocal.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return fecha?.toString() ?? 'N/D';
     }
@@ -62,7 +70,7 @@ Future<Uint8List> generarPdfCotizacionComida({
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
 
-  // PÁGINA 1
+  // ---------------- PÁGINA 1 ----------------
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -80,9 +88,8 @@ Future<Uint8List> generarPdfCotizacionComida({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.SizedBox(height: 40),
-                  pw.Text('La Paz, ${formatFecha(DateTime.now())}', style: estiloNormal),
+                  pw.Text('La Paz, ${formatFechaHora(DateTime.now())}', style: estiloNormal),
                   pw.SizedBox(height: 16),
-
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -90,8 +97,7 @@ Future<Uint8List> generarPdfCotizacionComida({
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('N° de Cotización: ${obtenerCodigoCorto(idCotizacion)}',
-                              style: estiloNegrita),
+                          pw.Text('N° de Cotización: ${obtenerCodigoCorto(idCotizacion)}', style: estiloNegrita),
                           pw.SizedBox(height: 8),
                           pw.Text('Cliente:', style: estiloNegrita),
                           pw.Text(nombreCliente, style: estiloNormal),
@@ -102,13 +108,13 @@ Future<Uint8List> generarPdfCotizacionComida({
                       pw.Text(
                         'Ref.: Cotización de Servicios Restaurante',
                         style: pw.TextStyle(
-                            fontStyle: pw.FontStyle.italic,
-                            fontWeight: pw.FontWeight.bold),
+                          fontStyle: pw.FontStyle.italic,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-
-                 pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 24),
                   pw.RichText(
                     textAlign: pw.TextAlign.justify,
                     text: pw.TextSpan(
@@ -118,34 +124,24 @@ Future<Uint8List> generarPdfCotizacionComida({
                           text: 'Gracias por confiar en nosotros para la realización de su evento. Nuestro restaurante ha sido cuidadosamente diseñado para ofrecerle un ',
                           style: estiloNormal,
                         ),
+                        pw.TextSpan(text: 'ambiente exclusivo, cálido y privado', style: estiloNegrita),
                         pw.TextSpan(
-                          text: 'ambiente exclusivo, cálido y privado',
-                          style: estiloNegrita,
-                        ),
-                        pw.TextSpan(
-                          text: ', perfecto para todo tipo de ocasión: desde celebraciones familiares hasta eventos empresariales, cenas conmemorativas o encuentros especiales.\n\n',
-                          style: estiloNormal,
-                        ),
-                        pw.TextSpan(
-                          text: 'Le presentamos, a continuación, los aspectos destacados según sus requerimientos.',
+                          text: ', perfecto para todo tipo de ocasión: desde celebraciones familiares hasta eventos empresariales, cenas conmemorativas o encuentros especiales.\n\nLe presentamos, a continuación, los aspectos destacados según sus requerimientos.',
                           style: estiloNormal,
                         ),
                       ],
                     ),
                   ),
-
                   pw.SizedBox(height: 24),
                   pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
                   pw.SizedBox(height: 12),
                   pw.Row(
                     children: [
                       pw.Text('Fecha de creación: ', style: estiloNegrita),
-                      pw.Text(formatFecha(cotizacionData?['fecha_creacion']),
-                          style: estiloNormal),
+                      pw.Text(formatFechaHora(cotizacionData?['fecha_creacion']), style: estiloNormal),
                     ],
                   ),
                   pw.SizedBox(height: 24),
-
                   pw.Table(
                     border: pw.TableBorder.all(color: PdfColors.grey300),
                     columnWidths: {
@@ -156,8 +152,7 @@ Future<Uint8List> generarPdfCotizacionComida({
                     },
                     children: [
                       pw.TableRow(
-                        decoration:
-                            const pw.BoxDecoration(color: PdfColors.grey300),
+                        decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                         children: [
                           _cell('Descripción'),
                           _cell('Cantidad'),
@@ -170,7 +165,6 @@ Future<Uint8List> generarPdfCotizacionComida({
                         final cantidad = item['cantidad'] ?? 0;
                         final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
                         final subtotal = cantidad * precioUnitario;
-
                         return pw.TableRow(
                           children: [
                             _cell(descripcion.toString()),
@@ -188,12 +182,12 @@ Future<Uint8List> generarPdfCotizacionComida({
                     children: [
                       pw.Text('Total final: ', style: estiloNegrita),
                       pw.SizedBox(width: 8),
-                      pw.Text(
-                        'Bs ${totalFinal.toStringAsFixed(2)}',
+                      pw.Text('Bs ${totalFinal.toStringAsFixed(2)}',
                         style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.blue),
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          color: azulOscuro,
+                        ),
                       ),
                     ],
                   ),
@@ -206,7 +200,7 @@ Future<Uint8List> generarPdfCotizacionComida({
     ),
   );
 
-  // PÁGINA 2
+  // ---------------- PÁGINA 2 ----------------
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -225,37 +219,23 @@ Future<Uint8List> generarPdfCotizacionComida({
                 children: [
                   pw.Text('Condiciones Generales', style: estiloTitulo),
                   pw.SizedBox(height: 14),
-
                   ..._condicionesGeneralesCatering(estiloNegrita, estiloNormal),
                   pw.SizedBox(height: 30),
                   pw.Text('Atentamente:', style: estiloNegrita),
                   pw.SizedBox(height: 40),
-
                   pw.Center(
                     child: pw.Column(
                       children: [
                         pw.Text(
                           'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
-                          style: estiloFirma,
+                          style: estiloFirma, // azul muy oscuro
                         ),
                         pw.SizedBox(height: 8),
-                        pw.Container(
-                          width: 150,
-                          height: 2,
-                          color: PdfColors.grey,
-                        ),
-                        pw.SizedBox(height: 8),
-                        pw.Text(
-                          'Lic. $nombreUsuario',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
+                        pw.Container(width: 150, height: 2, color: PdfColors.grey),
+                        
                         pw.SizedBox(height: 4),
                         pw.Text('Jefe de Catering', style: estiloNormal),
-                        pw.SizedBox(height: 2),
-                        pw.Text(nombreSubestablecimiento, style: estiloNormal),
+                        pw.SizedBox(height: 2), pw.Text(nombreSubestablecimiento, style: estiloNormal),
                       ],
                     ),
                   ),
@@ -283,10 +263,7 @@ List<pw.Widget> _condicionesGeneralesCatering(
   final condiciones = <Map<String, dynamic>>[
     {
       'titulo': 'Horarios establecidos:',
-      'contenido': [
-        'Check-in: Desde las 15:00 hrs',
-        'Check-out: Hasta las 12:00 hrs'
-      ]
+      'contenido': ['Check-in: Desde las 15:00 hrs', 'Check-out: Hasta las 12:00 hrs']
     },
     {
       'titulo': 'Formas de pago aceptadas:',
@@ -304,9 +281,7 @@ List<pw.Widget> _condicionesGeneralesCatering(
     },
     {
       'titulo': 'Modificaciones:',
-      'contenido': [
-        'Cualquier cambio en los servicios deberá ser notificado y aprobado con antelación.'
-      ]
+      'contenido': ['Cualquier cambio en los servicios deberá ser notificado y aprobado con antelación.']
     },
     {
       'titulo': 'Responsabilidades del cliente:',
@@ -319,8 +294,7 @@ List<pw.Widget> _condicionesGeneralesCatering(
       'titulo': 'Atención personalizada:',
       'contenido': [
         'Nuestro equipo estará disponible para acompañarlo en todo el proceso y asegurar el éxito de su evento.',
-        'Le agradecemos por elegirnos y quedamos atentos a cualquier requerimiento que contribuya al éxito de su evento en nuestro restaurante.',
-        'Atentamente:'
+        'Le agradecemos por elegirnos y quedamos atentos a cualquier requerimiento que contribuya al éxito de su evento en nuestro restaurante.'
       ]
     },
   ];
@@ -336,10 +310,8 @@ List<pw.Widget> _condicionesGeneralesCatering(
               .map((sub) => pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('▪ ', style: estiloNormal),
-                      pw.Expanded(
-                        child: pw.Text(sub, style: estiloNormal),
-                      ),
+                      pw.Text('- ', style: estiloNormal), // guion sencillo
+                      pw.Expanded(child: pw.Text(sub, style: estiloNormal)),
                     ],
                   ))
               .toList(),
@@ -349,6 +321,7 @@ List<pw.Widget> _condicionesGeneralesCatering(
     ];
   }).toList();
 }
+
 Future<Uint8List> _networkImageToBytes(String url) async {
   final response = await http.get(Uri.parse(url));
   if (response.statusCode == 200) {

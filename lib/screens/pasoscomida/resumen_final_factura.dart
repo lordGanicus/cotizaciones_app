@@ -58,7 +58,30 @@ class _ResumenFinalCotizacionComidaPageState
     supabase = Supabase.instance.client;
     _loadData();
   }
+String formatFechaHoraEvento(String? fecha, String? hora) {
+  if (fecha == null || fecha.isEmpty) return '-';
 
+  try {
+    // Si hora está presente, la combinamos con la fecha
+    DateTime dt;
+    if (hora != null && hora.isNotEmpty) {
+      // Asegurarnos de que hora tenga formato HH:mm
+      final horaFormat = hora.length == 5 ? hora : '00:00';
+      dt = DateTime.parse('$fecha $horaFormat:00'); // Convertimos a DateTime
+    } else {
+      dt = DateTime.parse(fecha);
+    }
+
+    // Formateamos fecha y hora
+    final fechaFormateada = DateFormat('dd/MM/yyyy').format(dt);
+    final horaFormateada = DateFormat('HH:mm').format(dt);
+
+    return '$fechaFormateada $horaFormateada';
+  } catch (e) {
+    // Si ocurre algún error, devolvemos fecha original
+    return fecha;
+  }
+}
   // Bloqueo de retroceso
   Future<bool> _onWillPop() async {
     final shouldPop = await showDialog<bool>(
@@ -338,203 +361,206 @@ class _ResumenFinalCotizacionComidaPageState
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        backgroundColor: lightBackground,
-        appBar: AppBar(
-          title: const Text(
-            'Resumen de Cotización - Restaurante',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: Colors.white,
-            ),
+@override
+Widget build(BuildContext context) {
+  return WillPopScope(
+    onWillPop: _onWillPop,
+    child: Scaffold(
+      backgroundColor: lightBackground,
+      appBar: AppBar(
+        title: const Text(
+          'Resumen de Cotización - Restaurante',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: Colors.white,
           ),
-          backgroundColor: darkBlue,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          elevation: 0,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(16),
-            ),
-          ),
-          automaticallyImplyLeading: false,
         ),
-        body: isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+        backgroundColor: darkBlue,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(16),
+          ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cargando resumen...',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Cargando resumen...',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: errorColor,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            error!,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: _loadData,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryGreen,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'Reintentar',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                  ),
+                ],
+              ),
+            )
+          : error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Encabezado con logo
-                        if (logoSubestablecimiento != null &&
-                            logoSubestablecimiento!.isNotEmpty)
-                          Center(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: borderColor,
-                                  width: 1,
-                                ),
-                              ),
-                              padding: const EdgeInsets.all(8),
-                              child: Image.network(
-                                logoSubestablecimiento!,
-                                height: 80,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  Icons.restaurant,
-                                  size: 60,
-                                  color: darkBlue.withOpacity(0.5),
-                                ),
-                              ),
-                            ),
-                          ),
+                        Icon(
+                          Icons.error_outline,
+                          color: errorColor,
+                          size: 48,
+                        ),
                         const SizedBox(height: 16),
-
-                        if (nombreSubestablecimiento != null)
-                          Center(
-                            child: Text(
-                              nombreSubestablecimiento!,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: darkBlue,
+                        Text(
+                          error!,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reintentar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Encabezado con logo
+                      if (logoSubestablecimiento != null &&
+                          logoSubestablecimiento!.isNotEmpty)
+                        Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: borderColor,
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Image.network(
+                              logoSubestablecimiento!,
+                              height: 80,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.restaurant,
+                                size: 60,
+                                color: darkBlue.withOpacity(0.5),
                               ),
                             ),
                           ),
-                        const SizedBox(height: 24),
+                        ),
+                      const SizedBox(height: 16),
 
-                        // Información de la cotización
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: cardBackground,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                      if (nombreSubestablecimiento != null)
+                        Center(
+                          child: Text(
+                            nombreSubestablecimiento!,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: darkBlue,
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Cotización N° ${widget.idCotizacion.length > 8 ? '${widget.idCotizacion.substring(0, 8)}...' : widget.idCotizacion}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: darkBlue,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Text(
-                                    formatFecha(DateTime.now()),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Información de la cotización
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Cotización N° ${widget.idCotizacion.length > 8 ? '${widget.idCotizacion.substring(0, 8)}...' : widget.idCotizacion}',
                                     style: TextStyle(
-                                      color: textSecondary,
-                                      fontSize: 14, // Tamaño de fuente ajustado
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: darkBlue,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _buildInfoRow('Cliente:', widget.nombreCliente),
-                              _buildInfoRow(
-                                  'CI/NIT:',
-                                  widget.ciCliente.isEmpty
-                                      ? 'No especificado'
-                                      : widget.ciCliente),
-                              const SizedBox(height: 8),
-                              _buildInfoRow(
-                                  'Estado:', cotizacionData?['estado'] ?? 'N/D'),
-                              _buildInfoRow('Fecha creación:',
-                                  formatFecha(cotizacionData?['fecha_creacion'])),
-                            ],
-                          ),
+                                ),
+                                Text(
+                                  formatFecha(DateTime.now()),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInfoRow('Cliente:', widget.nombreCliente),
+                            _buildInfoRow(
+                                'CI/NIT:',
+                                widget.ciCliente.isEmpty
+                                    ? 'No especificado'
+                                    : widget.ciCliente),
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                                'Estado:', cotizacionData?['estado'] ?? 'N/D'),
+                            _buildInfoRow('Fecha creación:',
+                                formatFecha(cotizacionData?['fecha_creacion'])),
+                          ],
                         ),
-                        const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 24),
 
-                        // Detalle de items de comida
-                        Text(
-                          'Detalle de Servicios de Comida',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: darkBlue,
-                          ),
+                      // ===== Fecha y Hora del Evento =====
+                     
+
+                      // Detalle de items de comida
+                      Text(
+                        'Detalle de Servicios de Comida',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: darkBlue,
                         ),
-                        const SizedBox(height: 12),
+                      ),
+                      const SizedBox(height: 12),
 
                         if (items.isEmpty)
                           Container(

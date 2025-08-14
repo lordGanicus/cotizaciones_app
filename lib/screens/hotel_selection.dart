@@ -481,85 +481,108 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     );
   }
 
-  Widget _buildCotizacionItem(Map<String, dynamic> cotizacion) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  cotizacion['nombre_cliente'] ?? 'N/D',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _obtenerTipo(cotizacion) == 'Habitación'
-                        ? const Color(0xFF00B894).withOpacity(0.1)
-                        : const Color(0xFF2D4059).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _obtenerTipo(cotizacion),
-                    style: TextStyle(
-                      color: _obtenerTipo(cotizacion) == 'Habitación'
-                          ? const Color(0xFF00B894)
-                          : const Color(0xFF2D4059),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'CI: ${cotizacion['ci_cliente'] ?? 'N/D'}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Fecha : ${_formatearFecha(cotizacion['primera_fecha'])}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  'Bs. ${cotizacion['total_acumulado']?.toStringAsFixed(2) ?? '0.00'}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF00B894),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+Widget _buildCotizacionItem(Map<String, dynamic> cotizacion) {
+  String tipo = _obtenerTipo(cotizacion);
+
+  Color colorFondo;
+  Color colorTexto;
+
+  switch (tipo) {
+    case 'Habitación':
+     colorFondo = const Color(0xFF223144); 
+       // azul clarito
+      colorTexto = Colors.white; // texto blanco
+      break;
+    case 'Salón':
+     // azul oscuro
+     colorFondo = const Color.fromARGB(255, 155, 178, 206);
+      colorTexto = Colors.white; // texto blanco
+      break;
+    case 'Restaurante':
+      colorFondo = const Color(0xFF374E6D); // azul intermedio
+      colorTexto = Colors.white; // texto blanco
+      break;
+    default:
+      colorFondo = const Color(0xFF2D4059); // color por defecto
+      colorTexto = Colors.white; // texto legible
   }
-Future<void> _cambiarEstablecimiento(
+
+  return Card(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                cotizacion['nombre_cliente'] ?? 'N/D',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Container(
+                width: 100, // ancho fijo para todos los tipos
+                height: 30, // altura uniforme
+                alignment: Alignment.center, // centrar texto
+                decoration: BoxDecoration(
+                  color: colorFondo, // fondo según tipo
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  tipo,
+                  style: TextStyle(
+                    color: colorTexto, // texto adaptado al fondo
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'CI: ${cotizacion['ci_cliente'] ?? 'N/D'}',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fecha : ${_formatearFecha(cotizacion['primera_fecha'])}',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                'Bs. ${cotizacion['total_acumulado']?.toStringAsFixed(2) ?? '0.00'}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00B894),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  Future<void> _cambiarEstablecimiento(
   BuildContext context,
   WidgetRef ref,
   String nuevoId,
@@ -722,134 +745,134 @@ Future<void> _cambiarEstablecimiento(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                     if (establecimientosFiltradosProvider != null) ...[
-  Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2D4059), width: 1),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Consumer(
-        builder: (context, ref, _) {
-          final establecimientosAsync = ref.watch(establecimientosFiltradosProvider);
-          final usuarioAsync = ref.watch(usuarioActualProvider);
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF2D4059), width: 1),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final establecimientosAsync = ref.watch(establecimientosFiltradosProvider);
+                                  final usuarioAsync = ref.watch(usuarioActualProvider);
 
-          print('--- REBUILD DROPDOWN ---');
-          print('Estado establecimientosAsync: ${establecimientosAsync.value}');
-          print('Estado usuarioAsync: ${usuarioAsync.value}');
+                                  print('--- REBUILD DROPDOWN ---');
+                                  print('Estado establecimientosAsync: ${establecimientosAsync.value}');
+                                  print('Estado usuarioAsync: ${usuarioAsync.value}');
 
-          return establecimientosAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) {
-              print('Error cargando establecimientos: $error');
-              return Text('Error: $error');
-            },
-            data: (establecimientos) {
-              return usuarioAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) {
-                  print('Error cargando usuario: $error');
-                  return Text('Error: $error');
-                },
-                data: (usuario) {
-                  print('Establecimientos disponibles: ${establecimientos.length}');
-                  print('ID establecimiento usuario: ${usuario.idEstablecimiento}');
-                  print('Estado local seleccionado: $establecimientoSeleccionadoId');
+                                  return establecimientosAsync.when(
+                                    loading: () => const Center(child: CircularProgressIndicator()),
+                                    error: (error, stack) {
+                                      print('Error cargando establecimientos: $error');
+                                      return Text('Error: $error');
+                                    },
+                                    data: (establecimientos) {
+                                      return usuarioAsync.when(
+                                        loading: () => const Center(child: CircularProgressIndicator()),
+                                        error: (error, stack) {
+                                          print('Error cargando usuario: $error');
+                                          return Text('Error: $error');
+                                        },
+                                        data: (usuario) {
+                                          print('Establecimientos disponibles: ${establecimientos.length}');
+                                          print('ID establecimiento usuario: ${usuario.idEstablecimiento}');
+                                          print('Estado local seleccionado: $establecimientoSeleccionadoId');
 
-                  // Inicializar selección solo si es necesario
-                  if (establecimientoSeleccionadoId == null && establecimientos.isNotEmpty) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final nuevoId = usuario.idEstablecimiento ?? establecimientos.first.id;
-                      final estSeleccionado = establecimientos.firstWhere(
-                        (e) => e.id == nuevoId,
-                        orElse: () => establecimientos.first,
-                      );
-                      setState(() {
-                        establecimientoSeleccionadoId = nuevoId;
-                        establecimientoSeleccionado = estSeleccionado; // inicializa el logo también
-                      });
-                      print('Inicializando selección con: $nuevoId');
-                    });
-                  }
+                                          // Inicializar selección solo si es necesario
+                                          if (establecimientoSeleccionadoId == null && establecimientos.isNotEmpty) {
+                                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                                              final nuevoId = usuario.idEstablecimiento ?? establecimientos.first.id;
+                                              final estSeleccionado = establecimientos.firstWhere(
+                                                (e) => e.id == nuevoId,
+                                                orElse: () => establecimientos.first,
+                                              );
+                                              setState(() {
+                                                establecimientoSeleccionadoId = nuevoId;
+                                                establecimientoSeleccionado = estSeleccionado; // inicializa el logo también
+                                              });
+                                              print('Inicializando selección con: $nuevoId');
+                                            });
+                                          }
 
-                  // Si no hay establecimientos
-                  if (establecimientos.isEmpty) {
-                    return const Text('No hay establecimientos disponibles');
-                  }
+                                          // Si no hay establecimientos
+                                          if (establecimientos.isEmpty) {
+                                            return const Text('No hay establecimientos disponibles');
+                                          }
 
-                  // Ordenar establecimientos (principal primero)
-                  final listaOrdenada = List<Establecimiento>.from(establecimientos);
-                  if (usuario.idEstablecimiento != null) {
-                    listaOrdenada.sort((a, b) {
-                      if (a.id == usuario.idEstablecimiento) return -1;
-                      if (b.id == usuario.idEstablecimiento) return 1;
-                      return 0;
-                    });
-                  }
+                                          // Ordenar establecimientos (principal primero)
+                                          final listaOrdenada = List<Establecimiento>.from(establecimientos);
+                                          if (usuario.idEstablecimiento != null) {
+                                            listaOrdenada.sort((a, b) {
+                                              if (a.id == usuario.idEstablecimiento) return -1;
+                                              if (b.id == usuario.idEstablecimiento) return 1;
+                                              return 0;
+                                            });
+                                          }
 
-                  return DropdownButton<String>(
-                    isExpanded: true,
-                    value: establecimientoSeleccionadoId,
-                    underline: const SizedBox(),
-                    icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
-                    items: listaOrdenada.map((e) {
-                      return DropdownMenuItem<String>(
-                        value: e.id,
-                        child: Text(
-                          e.nombre ?? 'Sin nombre',
-                          style: const TextStyle(color: Color(0xFF2D4059)),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (nuevoId) async {
-                      if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
-                        _cambiarEstablecimiento(context, ref, nuevoId, listaOrdenada);
-                      }
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
-    ),
-  ),
-  const SizedBox(height: 10),
-],
+                                          return DropdownButton<String>(
+                                            isExpanded: true,
+                                            value: establecimientoSeleccionadoId,
+                                            underline: const SizedBox(),
+                                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2D4059)),
+                                            items: listaOrdenada.map((e) {
+                                              return DropdownMenuItem<String>(
+                                                value: e.id,
+                                                child: Text(
+                                                  e.nombre ?? 'Sin nombre',
+                                                  style: const TextStyle(color: Color(0xFF2D4059)),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (nuevoId) async {
+                                              if (nuevoId != null && nuevoId != establecimientoSeleccionadoId) {
+                                                _cambiarEstablecimiento(context, ref, nuevoId, listaOrdenada);
+                                              }
+                                            },
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
 
-// Logo que se actualiza automáticamente según el establecimiento seleccionado
-if (establecimientoSeleccionado != null &&
-    establecimientoSeleccionado!.logotipo != null) ...[
-  Center(
-    child: Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D4059),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          establecimientoSeleccionado!.logotipo!,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) {
-            print('Error cargando logo de ${establecimientoSeleccionado!.nombre}');
-            return const Icon(
-              Icons.business,
-              color: Colors.white,
-              size: 50,
-            );
-          },
-        ),
-      ),
-    ),
-  ),
-  const SizedBox(height: 20),
-],
+                        // Logo que se actualiza automáticamente según el establecimiento seleccionado
+                        if (establecimientoSeleccionado != null &&
+                            establecimientoSeleccionado!.logotipo != null) ...[
+                          Center(
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2D4059),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  establecimientoSeleccionado!.logotipo!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) {
+                                    print('Error cargando logo de ${establecimientoSeleccionado!.nombre}');
+                                    return const Icon(
+                                      Icons.business,
+                                      color: Colors.white,
+                                      size: 50,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                                             // Usuario info
                       if (datosUsuario != null) ...[
                         Row(

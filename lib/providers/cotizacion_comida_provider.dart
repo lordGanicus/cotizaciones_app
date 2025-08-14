@@ -58,13 +58,13 @@ class CotizacionComidaNotifier extends StateNotifier<ItemComidaCotizacion> {
   void setUsuario(String idUsuario) {
     state = state.copyWith(idUsuario: idUsuario);
   }
-
-  void setFechaYHoraEvento(DateTime fecha, DateTime hora) {
-    state = state.copyWith(
-      fechaEvento: fecha,
-      horaEvento: hora,
-    );
-  }
+  
+void setFechaYHoraEvento(DateTime fecha, DateTime hora) {
+  state = state.copyWith(
+    fechaEvento: fecha,
+    horaEvento: hora,
+  );
+}
 
   void agregarItem(ItemComida item) {
     final nuevaLista = [...state.itemsComida, item];
