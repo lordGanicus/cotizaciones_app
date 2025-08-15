@@ -287,7 +287,7 @@ String formatHora(dynamic hora) {
       }
       
       // Crear nombre del archivo
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Salón.pdf';
+      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización de Salón.pdf';
       final filePath = '${saveDir.path}/$fileName';
       final file = File(filePath);
       

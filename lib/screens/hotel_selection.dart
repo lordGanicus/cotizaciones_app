@@ -62,101 +62,143 @@ class _HotelSelectionPageState extends State<HotelSelectionPage> {
     super.dispose();
   }
 
-  void _filtrarCotizaciones() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        cotizacionesFiltradas = List.from(cotizaciones);
-      } else {
-        cotizacionesFiltradas = cotizaciones.where((cotizacion) {
-          final nombre =
-              (cotizacion['nombre_cliente'] ?? '').toString().toLowerCase();
-          final ci = (cotizacion['ci_cliente'] ?? '').toString().toLowerCase();
-          final tipo =
-              (_obtenerTipo(cotizacion) ?? '').toString().toLowerCase();
-          return nombre.contains(query) ||
-              ci.contains(query) ||
-              tipo.contains(query);
-        }).toList();
+void _filtrarCotizaciones() {
+  final query = _searchController.text.toLowerCase();
+  setState(() {
+    if (query.isEmpty) {
+      cotizacionesFiltradas = List.from(cotizaciones);
+    } else {
+      cotizacionesFiltradas = cotizaciones.where((cotizacion) {
+        // Tomar el nombre completo
+        final nombreCompleto = (cotizacion['nombre_cliente'] ?? '').toString().trim();
+        final partes = nombreCompleto.split(' ').where((p) => p.isNotEmpty).toList();
+
+        String primerNombreApellido = '';
+        if (partes.isNotEmpty) {
+          primerNombreApellido = partes.first; // primer nombre
+          if (partes.length > 2) {
+            // más de dos palabras → primer apellido es penúltima
+            primerNombreApellido += ' ' + partes[partes.length - 2];
+          } else if (partes.length == 2) {
+            // solo dos palabras → usar la segunda como apellido
+            primerNombreApellido += ' ' + partes[1];
+          }
+        }
+
+        print('Nombre procesado: $primerNombreApellido'); // depuración
+
+        final nombre = primerNombreApellido.toLowerCase();
+        final ci = (cotizacion['ci_cliente'] ?? '').toString().toLowerCase();
+        final tipo = (_obtenerTipo(cotizacion) ?? '').toString().toLowerCase();
+
+        return nombre.contains(query) || ci.contains(query) || tipo.contains(query);
+      }).toList();
+    }
+  });
+}
+      Future<void> _cargarInformacion() async {
+        final user = supabase.auth.currentUser;
+        if (user == null) return;
+
+        try {
+          final responseUser = await supabase.from('usuarios').select('''
+                nombre_completo,
+                ci,
+                genero,
+                avatar,
+                id_establecimiento,
+                id_subestablecimiento,
+                roles!usuarios_id_rol_fkey(nombre),
+                establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo, id),
+                subestablecimientos(nombre, logotipo, id)
+              ''').eq('id', user.id).maybeSingle();
+
+          print('responseUser: $responseUser');
+
+          if (responseUser != null) {
+            datosUsuario = {
+              'nombre': responseUser['nombre_completo'],
+              'ci': responseUser['ci'],
+              'genero': responseUser['genero'],
+              'avatar': responseUser['avatar'],
+            };
+
+            rolUsuario = responseUser['roles'];
+
+            if (responseUser['establecimientos'] != null) {
+              setState(() {
+                hotelUnico = responseUser['establecimientos'];
+              });
+            }
+
+            if (responseUser['subestablecimientos'] != null) {
+              setState(() {
+                subestablecimientoUnico = responseUser['subestablecimientos'];
+              });
+            }
+          }
+
+          await _cargarCotizaciones();
+
+          setState(() {
+            isLoading = false;
+          });
+        } catch (e) {
+          print('Error al cargar datos: $e');
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
+
+   Future<void> _cargarCotizaciones() async {
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
+
+  try {
+    final response = await supabase.rpc(
+      'obtener_historial_clientes2',
+      params: {'p_id_usuario': user.id},
+    );
+
+    // Convertir a lista y procesar nombres
+    final lista = List<Map<String, dynamic>>.from(response);
+
+    final listaProcesada = lista.map((cotizacion) {
+      final nombreCompleto = (cotizacion['nombre_cliente'] ?? '').toString().trim();
+      final partes = nombreCompleto.split(' ').where((p) => p.isNotEmpty).toList();
+
+      String primerNombreApellido = '';
+      if (partes.isNotEmpty) {
+        primerNombreApellido = partes.first; // primer nombre
+        if (partes.length > 2) {
+          // más de dos palabras → penúltima como primer apellido
+          primerNombreApellido += ' ' + partes[partes.length - 2];
+        } else if (partes.length == 2) {
+          // solo dos palabras → segunda palabra como apellido
+          primerNombreApellido += ' ' + partes[1];
+        }
+      }
+
+      print('Nombre procesado: $primerNombreApellido'); // depuración
+
+      // Reemplazar en el mapa
+      cotizacion['nombre_cliente'] = primerNombreApellido;
+      return cotizacion;
+    }).toList();
+
+    setState(() {
+      cotizaciones = listaProcesada;
+      cotizacionesFiltradas = List.from(listaProcesada);
+    });
+  } catch (e) {
+    print('Error al cargar cotizaciones: $e');
+    setState(() {
+      cotizaciones = [];
+      cotizacionesFiltradas = [];
     });
   }
-
-  Future<void> _cargarInformacion() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    try {
-      final responseUser = await supabase.from('usuarios').select('''
-            nombre_completo,
-            ci,
-            genero,
-            avatar,
-            id_establecimiento,
-            id_subestablecimiento,
-            roles!usuarios_id_rol_fkey(nombre),
-            establecimientos!usuarios_id_establecimiento_fkey(nombre, logotipo, id),
-            subestablecimientos(nombre, logotipo, id)
-          ''').eq('id', user.id).maybeSingle();
-
-      print('responseUser: $responseUser');
-
-      if (responseUser != null) {
-        datosUsuario = {
-          'nombre': responseUser['nombre_completo'],
-          'ci': responseUser['ci'],
-          'genero': responseUser['genero'],
-          'avatar': responseUser['avatar'],
-        };
-
-        rolUsuario = responseUser['roles'];
-
-        if (responseUser['establecimientos'] != null) {
-          setState(() {
-            hotelUnico = responseUser['establecimientos'];
-          });
-        }
-
-        if (responseUser['subestablecimientos'] != null) {
-          setState(() {
-            subestablecimientoUnico = responseUser['subestablecimientos'];
-          });
-        }
-      }
-
-      await _cargarCotizaciones();
-
-      setState(() {
-        isLoading = false;
-      });
-    } catch (e) {
-      print('Error al cargar datos: $e');
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _cargarCotizaciones() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    try {
-      final response = await supabase.rpc('obtener_historial_clientes2',
-          params: {'p_id_usuario': user.id});
-
-      setState(() {
-        cotizaciones = List<Map<String, dynamic>>.from(response);
-        cotizacionesFiltradas = List.from(cotizaciones);
-      });
-    } catch (e) {
-      print('Error al cargar cotizaciones: $e');
-      setState(() {
-        cotizaciones = [];
-        cotizacionesFiltradas = [];
-      });
-    }
-  }
+}
 
   Widget _buildAvatar() {
     if (datosUsuario?['avatar'] != null) {

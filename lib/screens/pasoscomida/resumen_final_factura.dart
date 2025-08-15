@@ -41,7 +41,8 @@ class _ResumenFinalCotizacionComidaPageState
   static const Color errorColor = Color(0xFFE74C3C);
 
   late final SupabaseClient supabase;
-  String? nombreSubestablecimiento;
+    String? nombreHotel;
+    String? nombreSubestablecimiento;
   String? logoSubestablecimiento;
   String? membreteSubestablecimiento;
   String? nombreUsuario;
@@ -236,7 +237,7 @@ String formatFechaHoraEvento(String? fecha, String? hora) {
       }
       
       // Crear nombre del archivo
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización restaurante.pdf';
+      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización del restaurante.pdf';
       final filePath = '${saveDir.path}/$fileName';
       final file = File(filePath);
       

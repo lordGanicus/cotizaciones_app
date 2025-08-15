@@ -248,6 +248,11 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                           height: 2,
                           color: PdfColors.grey,
                         ),
+                        pw.SizedBox(height: 4),
+
+                        pw.Text('Gerente de Ventas', style: estiloNormal),
+                        pw.SizedBox(height: 2),
+                        pw.Text(nombreHotel, style: estiloNormal),
                       ],
                     ),
                   ),
