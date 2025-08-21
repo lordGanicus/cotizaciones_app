@@ -37,7 +37,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
       pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
   final estiloNegrita =
       pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
-  final estiloNormal = pw.TextStyle(fontSize: 11);
+  final estiloNormal = pw.TextStyle(fontSize: 10);
   final estiloFirma = pw.TextStyle(
     fontSize: 28,
     font: acterumSignature,
@@ -104,7 +104,7 @@ print('Participantes recibidos en PDF: $participantes');
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 30),
+                  pw.SizedBox(height: 60),
                   pw.Text('La Paz, ${formatFecha(DateTime.now())}',
                       style: estiloNormal),
                   pw.SizedBox(height: 16),
@@ -270,17 +270,18 @@ pdf.addPage(
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
+                 pw.SizedBox(height: 52),
                 pw.Text('Condiciones Generales', style: estiloTitulo),
-                pw.SizedBox(height: 14),
+                pw.SizedBox(height: 10),
                 ..._condicionesGeneralesSalon(estiloNegrita, estiloNormal),
                 pw.Text(
                   'Gracias por considerar nuestros servicios. Estamos atentos a cualquier detalle adicional que nos permita asegurar el éxito de su evento.',
                   style: estiloNormal,
                   textAlign: pw.TextAlign.justify,
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 15),
                 pw.Text('Atentamente:', style: estiloNegrita),
-                pw.SizedBox(height: 30),
+                pw.SizedBox(height: 15),
                 pw.Center(
                   child: pw.Column(
                     children: [

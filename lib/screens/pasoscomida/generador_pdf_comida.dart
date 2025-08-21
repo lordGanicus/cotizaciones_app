@@ -87,7 +87,7 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 52),
                   pw.Text('La Paz, ${formatFechaHora(DateTime.now())}', style: estiloNormal),
                   pw.SizedBox(height: 16),
                   pw.Row(
@@ -217,12 +217,13 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
+                  pw.SizedBox(height: 52),
                   pw.Text('Condiciones Generales', style: estiloTitulo),
                   pw.SizedBox(height: 14),
                   ..._condicionesGeneralesCatering(estiloNegrita, estiloNormal),
-                  pw.SizedBox(height: 30),
+                  pw.SizedBox(height: 15),
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 20),
                   pw.Center(
                     child: pw.Column(
                       children: [
