@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../models/cotizacion_salon.dart';
 import '../../models/salon.dart';
 import '../../providers/cotizacion_salon_provider.dart';
@@ -103,6 +104,7 @@ class _Paso1CotizacionSalonPageState
       initialDate: ahora,
       firstDate: ahora,
       lastDate: DateTime(2100),
+      locale: const Locale('es', 'ES'), // Configurar español
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

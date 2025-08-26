@@ -4,12 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/hotel_selection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:intl/date_symbol_data_local.dart'; 
+import 'package:flutter_localizations/flutter_localizations.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
-
+await initializeDateFormatting('es_ES', null);
   await Supabase.initialize(
     url: dotenv.get('SUPABASE_URL'),
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
@@ -24,6 +25,15 @@ class CotizacionApp extends StatelessWidget {
 @override
 Widget build(BuildContext context) {
   return MaterialApp(
+     localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  supportedLocales: const [
+    Locale('es', 'ES'), // Español
+  ],
+  locale: const Locale('es', 'ES'),
     title: 'Cotizaciones App',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(

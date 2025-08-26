@@ -397,8 +397,8 @@ class Paso4CotizacionSalonPage extends ConsumerWidget {
                     await supabase.from('items_cotizacion').insert({
                       'id_cotizacion': idNuevaCotizacion,
                       'unidad': 'Hora',
-                      'cantidad': horasValidas,
-                      'precio_unitario': subtotalSalon / horasValidas,
+                      'cantidad': /*horasValidas*/ 1,
+                      'precio_unitario': subtotalSalon /* horasValidas*/,
                       'descripcion': 'Alquiler de salón para evento ${cotizacion.tipoEvento} (${cotizacion.participantes} personas)',
                       'tipo': 'salon',
                       'detalles': jsonEncode(detallesSalon),

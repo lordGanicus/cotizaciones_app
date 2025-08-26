@@ -223,10 +223,10 @@ class _CrearCotizacionComidaStep1State
       }
 
       final ci = _ciController.text.trim();
-      if (ci.isEmpty) {
+     /* if (ci.isEmpty ) {
         _showError('El CI/NIT es obligatorio');
         return;
-      }
+      }*/
       if (!RegExp(r'^[0-9]+$').hasMatch(ci)) {
         _showError('El CI/NIT solo puede contener números');
         return;

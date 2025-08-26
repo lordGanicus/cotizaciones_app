@@ -10,13 +10,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
   supabase_flutter: ^2.9.1
   url_launcher: ^6.2.6
   flutter_dotenv: ^5.1.0
-  intl: ^0.18.1
+  intl: ^0.20.2
   uuid: ^3.0.7
   pdf: ^3.10.8
   printing: ^5.12.0
@@ -30,12 +32,12 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1 # <-- agrega aquí esta línea
+  flutter_launcher_icons: ^0.13.1
 
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/iconLogo.png" # <-- ruta a tu icono
+  image_path: "assets/iconLogo.png"
 
 flutter:
   uses-material-design: true
