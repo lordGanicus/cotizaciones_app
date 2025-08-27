@@ -12,6 +12,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
   required String idCotizacion,
   required String nombreCliente,
   required String ciCliente,
+  required String celular,
   required String nombreUsuario,
   Map<String, dynamic>? cotizacionData,
   required List<Map<String, dynamic>> items,
@@ -87,6 +88,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
 print('Participantes recibidos en PDF: $participantes');
+print('Celular en PDF: $celular');
   // PÁGINA 1
   pdf.addPage(
     pw.Page(
@@ -104,7 +106,7 @@ print('Participantes recibidos en PDF: $participantes');
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 60),
+                  pw.SizedBox(height: 64),
                   pw.Text('La Paz, ${formatFecha(DateTime.now())}',
                       style: estiloNormal),
                   pw.SizedBox(height: 16),
@@ -133,7 +135,7 @@ print('Participantes recibidos en PDF: $participantes');
                       ),
                     ],
                   ),
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 20),
                   pw.Text('Estimado(a):', style: estiloNegrita),
                   pw.SizedBox(height: 8),
                   pw.Text(
@@ -147,11 +149,11 @@ print('Participantes recibidos en PDF: $participantes');
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 18),
 
                   // NUEVA SECCIÓN: Aspectos relevantes del evento
                    // debug
-                  pw.Text('ASPECTOS RELEVANTES DEL EVENTO', style: estiloTitulo),
+                  pw.Text('ASPECTOS RELEVANTES DEL EVENTO', style: estiloNegrita),
                   pw.SizedBox(height: 12),
                   pw.Bullet(
                     text: 'Evento programado: $nombreSalon',
@@ -178,9 +180,9 @@ print('Participantes recibidos en PDF: $participantes');
                     text: 'Participantes: $participantes personas',
                     style: estiloNormal,
                   ),
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 18),
 
-                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
+                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloNegrita),
                   pw.SizedBox(height: 12),
                   /*pw.Row(
                     children: [
@@ -270,10 +272,75 @@ pdf.addPage(
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                 pw.SizedBox(height: 52),
-                pw.Text('Condiciones Generales', style: estiloTitulo),
+                 pw.SizedBox(height: 58),
+                pw.Text('Políticas y Condiciones', style: estiloTitulo),
                 pw.SizedBox(height: 10),
-                ..._condicionesGeneralesSalon(estiloNegrita, estiloNormal),
+                
+                // Políticas y condiciones actualizadas
+                pw.Text('Horario de Ingreso (Check-In)', style: estiloNegrita),
+                pw.Text(
+                  'El horario de ingreso es a partir de horas 14:00, en caso que la llegada sea por la madrugada, la reserva debe ser realizada desde una noche antes agregando como una noche extra.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Horario de Salida (Check-Out)', style: estiloNegrita),
+                pw.Text(
+                  'El horario de salida es hasta el mediodía horas 12:00 p.m.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Llegada anticipada (Early Check-In)', style: estiloNegrita),
+                pw.Text(
+                  'En caso de requerir la habitación antes del horario de ingreso, se puede solicitar un ingreso más temprano el cual estaría sujeto a disponibilidad del hotel y según precio establecido.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Salida tardía (Late Check-Out)', style: estiloNegrita),
+                pw.Text(
+                  'Si requiere ocupar la habitación pasado el horario de salida (mediodía), se incrementare el 50% de su tarifa hasta horas 18:00. Pasado este horario se procederá al cobro de una noche extra según el precio proporcionado.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Modificación de Reserva', style: estiloNegrita),
+                pw.Text(
+                  'Toda modificación se debe realizar hasta 24 horas antes de la llegada de cada huésped, caso contrario se realizará el cobro de la noche de hospedaje según la solicitud de reserva realizada inicialmente.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Cancelación', style: estiloNegrita),
+                pw.Text(
+                  'Toda cancelación de reserva, debe ser realizada con 24 horas de anticipación a la llegada de cada huésped, caso contrario se realizará el cobro de la primera noche.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('No-Show', style: estiloNegrita),
+                pw.Text(
+                  'Se aplicará el No-Show, cuando el huésped no haya llegado al hotel, y su reserva no haya sido cancelada o modificada. Se procederá al cobro de la primera noche de hospedaje como penalidad.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 10),
+                
+                pw.Text('Personas con discapacidad', style: estiloNegrita),
+                pw.Text(
+                  'El hotel cuenta con una habitación amplia y cómoda para personas con discapacidad, así como en áreas comunes como el restaurante y baños.',
+                  style: estiloNormal,
+                  textAlign: pw.TextAlign.justify,
+                ),
+                pw.SizedBox(height: 20),
+                
                 pw.Text(
                   'Gracias por considerar nuestros servicios. Estamos atentos a cualquier detalle adicional que nos permita asegurar el éxito de su evento.',
                   style: estiloNormal,
@@ -290,16 +357,25 @@ pdf.addPage(
                         'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
                         style: estiloFirma.copyWith(color: azulOscuro),
                       ),
-                      pw.SizedBox(height: 8),
+                       pw.SizedBox(height: 8),
                       pw.Container(
                         width: 150,
                         height: 2,
                         color: PdfColors.grey,
                       ),
                       pw.SizedBox(height: 8),
+                       pw.Text(
+                        'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
+                        style: estiloNormal,
+                      ),
                      
+                      pw.SizedBox(height: 8),
+                     pw.Text(
+                        'Nro. Tel. ${celular.split(' ').take(2).join(' ')}',
+                        style: estiloNormal,
+                      ),
                       pw.SizedBox(height: 4),
-                      pw.Text('Coordinador de Eventos', style: estiloNormal),
+                      pw.Text('Reservas y Ventas', style: estiloNormal),
                       pw.SizedBox(height: 2),
                       pw.Text(nombreSubestablecimiento, style: estiloNormal),
                     ],
@@ -322,58 +398,6 @@ pw.Widget _cell(String text) {
     padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
     child: pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
   );
-}
-
-List<pw.Widget> _condicionesGeneralesSalon(
-    pw.TextStyle estiloNegrita, pw.TextStyle estiloNormal) {
-  final condiciones = [
-    {
-      'titulo': 'Validez de la cotización:',
-      'contenido':
-          'Esta propuesta es válida por 15 días calendario a partir de la fecha de emisión.'
-    },
-    {
-      'titulo': 'Horarios establecidos:',
-      'contenido':
-          'Check-in: Desde las 15:00 hrs\nCheck-out: Hasta las 12:00 hrs'
-    },
-    {
-      'titulo': 'Formas de pago aceptadas:',
-      'contenido':
-          'Transferencia bancaria, tarjetas de crédito o débito, y efectivo.\nLa reserva será válida tras la confirmación del pago.'
-    },
-    {
-      'titulo': 'Política de cancelaciones:',
-      'contenido':
-          'Cancelaciones con un mínimo de 48 horas antes del evento no generan penalización. Posteriores a este plazo están sujetas a cargos por cancelación.'
-    },
-    {
-      'titulo': 'Modificaciones:',
-      'contenido':
-          'Cualquier cambio en los servicios deberá ser notificado y aprobado con antelación.'
-    },
-    {
-      'titulo': 'Responsabilidades del cliente:',
-      'contenido':
-          'El cliente se compromete a respetar las normas del hotel y cuidar las instalaciones.\nCualquier daño podrá generar cargos adicionales.'
-    },
-    {
-      'titulo': 'Atención personalizada:',
-      'contenido':
-          'Nuestro equipo estará disponible para acompañarlo en todo el proceso y asegurar el éxito de su evento.'
-    },
-  ];
-
-  return condiciones.expand((c) {
-    return [
-      pw.Bullet(text: c['titulo']!, style: estiloNegrita),
-      pw.Padding(
-        padding: const pw.EdgeInsets.only(left: 14),
-        child: pw.Text(c['contenido']!, style: estiloNormal),
-      ),
-      pw.SizedBox(height: 18),
-    ];
-  }).toList();
 }
 
 Future<Uint8List> _networkImageToBytes(String url) async {

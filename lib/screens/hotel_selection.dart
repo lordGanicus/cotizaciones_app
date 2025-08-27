@@ -243,7 +243,7 @@ void _filtrarCotizaciones() {
     if (cotizacion['tipo'] != null) {
       final tipo = cotizacion['tipo'].toString().toLowerCase();
       if (tipo.contains('habitación') || tipo.contains('habitacion')) {
-        return 'Habitación';
+        return 'Hospedaje';
       } else if (tipo.contains('restaurante') || tipo.contains('comida')) {
         return 'Restaurante';
       } else if (tipo.contains('salón') || tipo.contains('salon')) {

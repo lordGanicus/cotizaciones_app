@@ -62,7 +62,7 @@ class _Paso1CotizacionSalonPageState
   final Color secondaryTextColor = const Color(0xFF555555);
 
   // Expresiones regulares para validación
-  final RegExp _nombreRegExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
+  final RegExp _nombreRegExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]+$');
   final RegExp _tipoEventoRegExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$');
 
   @override
@@ -75,7 +75,7 @@ class _Paso1CotizacionSalonPageState
     super.dispose();
   }
 
-  // Función para capitalizar cada palabra del nombre
+  // Función para capitalizar cada palabra del nombre*********************************************/
   String _capitalizarNombreCompleto(String nombre) {
     return nombre
         .trim()
@@ -486,53 +486,40 @@ class _Paso1CotizacionSalonPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSectionTitle('Datos del Cliente'),
+                      
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _nombreController,
-                        decoration: _inputDecoration('Nombre del cliente'),
+                        decoration: _inputDecoration('Nombre del cliente o empresa'),
                         style: TextStyle(color: textColor),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'El nombre es obligatorio';
                           }
                           if (!_nombreRegExp.hasMatch(value.trim())) {
-                            return 'Solo se permiten letras y espacios';
-                          }
-                          if (value.trim().split(' ').length < 2) {
-                            return 'Ingrese al menos un nombre y un apellido';
+                            return 'Solo se permiten letras, espacios y puntos';
                           }
                           return null;
                         },
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]')),
                         ],
-                        onChanged: (val) {
-                          final textoCapitalizado = _capitalizarNombreCompleto(val);
-                          if (val != textoCapitalizado) {
-                            final cursorPos = _nombreController.selection;
-                            _nombreController.value = TextEditingValue(
-                              text: textoCapitalizado,
-                              selection: cursorPos,
-                            );
-                          }
-                        },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _ciController,
-                        decoration: _inputDecoration('CI o NIT'),
+                        decoration: _inputDecoration('CI o NIT (opcional)'),
                         style: TextStyle(color: textColor),
                         keyboardType: const TextInputType.numberWithOptions(
                             signed: false, decimal: false),
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'El CI o NIT es obligatorio';
-                          }
-                          if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
-                            return 'Solo se permiten números en CI o NIT';
-                          }
-                          if (value.trim().length < 4) {
-                            return 'El CI/NIT debe tener al menos 4 dígitos';
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
+                              return 'Solo se permiten números en CI o NIT';
+                            }
+                            if (value.trim().length < 4) {
+                              return 'El CI/NIT debe tener al menos 4 dígitos';
+                            }
                           }
                           return null;
                         },
@@ -578,16 +565,6 @@ class _Paso1CotizacionSalonPageState
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]')),
                         ],
-                        onChanged: (val) {
-                          final textoCapitalizado = _capitalizarTipoEvento(val);
-                          if (val != textoCapitalizado) {
-                            final cursorPos = _tipoEventoController.selection;
-                            _tipoEventoController.value = TextEditingValue(
-                              text: textoCapitalizado,
-                              selection: cursorPos,
-                            );
-                          }
-                        },
                       ),
                       const SizedBox(height: 12),
                       _buildDateTimeButton(
@@ -710,7 +687,16 @@ class _Paso1CotizacionSalonPageState
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _guardarYContinuar,
+                  onPressed: () {
+                    // Capitalizar antes de guardar
+                    if (_nombreController.text.isNotEmpty) {
+                      _nombreController.text = _capitalizarNombreCompleto(_nombreController.text);
+                    }
+                    if (_tipoEventoController.text.isNotEmpty) {
+                      _tipoEventoController.text = _capitalizarTipoEvento(_tipoEventoController.text);
+                    }
+                    _guardarYContinuar();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     foregroundColor: Colors.white,

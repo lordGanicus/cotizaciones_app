@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -46,6 +47,7 @@ class _ResumenFinalCotizacionSalonPageState
   String? logoSubestablecimiento;
   String? membreteSubestablecimiento;
   String? nombreUsuario;
+  String ? celular;
   Map<String, dynamic>? cotizacionData;
   List<Map<String, dynamic>> items = [];
   double totalFinal = 0;
@@ -73,7 +75,8 @@ class _ResumenFinalCotizacionSalonPageState
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Estás seguro?'),
-        content: const Text('Si regresas al inicio, perderás el progreso de esta cotización.'),
+        content: const Text(
+            'Si regresas al inicio, perderás el progreso de esta cotización.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -86,7 +89,7 @@ class _ResumenFinalCotizacionSalonPageState
         ],
       ),
     );
-    
+
     if (shouldPop ?? false) {
       // Navegar a hotel_selection.dart
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -113,16 +116,20 @@ class _ResumenFinalCotizacionSalonPageState
       // Obtener datos del usuario
       final usuarioResp = await supabase
           .from('usuarios')
-          .select('id_subestablecimiento, nombre_completo')
+          .select('id_subestablecimiento, nombre_completo, celular')
           .eq('id', user.id)
           .single();
+   
+      celular = (usuarioResp['celular'] ?? '--');
 
-      nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
-      
+
+    nombreUsuario = (usuarioResp['nombre_completo'] ?? '').toString().trim();
       // Usar el idSubestablecimiento pasado como parámetro si está disponible
-      final idSubestablecimiento = widget.idSubestablecimiento ?? usuarioResp['id_subestablecimiento'];
+      final idSubestablecimiento =
+          widget.idSubestablecimiento ?? usuarioResp['id_subestablecimiento'];
 
-      if (idSubestablecimiento == null) throw 'Subestablecimiento no encontrado';
+      if (idSubestablecimiento == null)
+        throw 'Subestablecimiento no encontrado';
 
       // Obtener datos del SUBestablecimiento
       final subestablecimientoResp = await supabase
@@ -133,7 +140,9 @@ class _ResumenFinalCotizacionSalonPageState
 
       nombreSubestablecimiento = subestablecimientoResp['nombre'] as String?;
       logoSubestablecimiento = subestablecimientoResp['logotipo'] as String?;
-      membreteSubestablecimiento = subestablecimientoResp['membrete'] as String?;
+      
+      membreteSubestablecimiento =
+          subestablecimientoResp['membrete'] as String?;
 
       // Obtener datos de la cotización
       final cotizacionResp = await supabase
@@ -174,7 +183,7 @@ class _ResumenFinalCotizacionSalonPageState
                 horaFin = decoded['hora_fin'];
                 nombreSalon = decoded['nombre_salon'] ?? '';
                 tipoArmado = decoded['tipo_armado'] ?? '';
-                participantes = decoded['participantes'] ??  0;
+                participantes = decoded['participantes'] ?? 0;
               }
             } catch (_) {}
           }
@@ -190,7 +199,8 @@ class _ResumenFinalCotizacionSalonPageState
           totalItem = val.toDouble();
         } else {
           final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
-          final precio = double.tryParse(item['precio_unitario'].toString()) ?? 0;
+          final precio =
+              double.tryParse(item['precio_unitario'].toString()) ?? 0;
           totalItem = cantidad * precio;
         }
         return prev + totalItem;
@@ -212,32 +222,34 @@ class _ResumenFinalCotizacionSalonPageState
       return fecha?.toString() ?? 'N/D';
     }
   }
-Map<String, dynamic>? parseDetallesSalon(dynamic detalles) {
-  if (detalles == null) return null;
-  
-  try {
-    if (detalles is String) {
-      return jsonDecode(detalles) as Map<String, dynamic>;
-    } else if (detalles is Map) {
-      return detalles.cast<String, dynamic>();
+
+  Map<String, dynamic>? parseDetallesSalon(dynamic detalles) {
+    if (detalles == null) return null;
+
+    try {
+      if (detalles is String) {
+        return jsonDecode(detalles) as Map<String, dynamic>;
+      } else if (detalles is Map) {
+        return detalles.cast<String, dynamic>();
+      }
+    } catch (e) {
+      debugPrint('Error parsing detalles salon: $e');
     }
-  } catch (e) {
-    debugPrint('Error parsing detalles salon: $e');
+    return null;
   }
-  return null;
-}
-String formatHora(dynamic hora) {
-  try {
-    if (hora is String) {
-      // Extrae solo la parte de la hora del string ISO
-      final dateTime = DateTime.parse(hora);
-      return DateFormat('HH:mm').format(dateTime);
+
+  String formatHora(dynamic hora) {
+    try {
+      if (hora is String) {
+        // Extrae solo la parte de la hora del string ISO
+        final dateTime = DateTime.parse(hora);
+        return DateFormat('HH:mm').format(dateTime);
+      }
+      return hora?.toString() ?? 'N/D';
+    } catch (_) {
+      return hora?.toString() ?? 'N/D';
     }
-    return hora?.toString() ?? 'N/D';
-  } catch (_) {
-    return hora?.toString() ?? 'N/D';
   }
-}
 
   Future<Uint8List> _generatePDFBytes() async {
     return await generarPdfCotizacionSalon(
@@ -258,42 +270,44 @@ String formatHora(dynamic hora) {
       nombreSalon: nombreSalon,
       tipoArmado: tipoArmado,
       participantes: participantes,
+      celular: celular ?? 'Celular',
     );
   }
 
   Future<void> _savePDF() async {
     if (_isGeneratingPDF) return;
-    
+
     setState(() {
       _isGeneratingPDF = true;
     });
 
     try {
       final pdfBytes = await _generatePDFBytes();
-      
+
       // Usamos getExternalStorageDirectory para Android y getApplicationDocumentsDirectory para iOS
-      final directory = Platform.isAndroid 
+      final directory = Platform.isAndroid
           ? await getExternalStorageDirectory()
           : await getApplicationDocumentsDirectory();
-      
+
       if (directory == null) {
         throw 'No se pudo acceder al directorio de almacenamiento';
       }
-      
+
       // Crear subdirectorio si no existe
       final saveDir = Directory('${directory.path}/Cotizaciones');
       if (!await saveDir.exists()) {
         await saveDir.create(recursive: true);
       }
-      
+
       // Crear nombre del archivo
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización de Salón.pdf';
+      final fileName =
+          '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización de Salón.pdf';
       final filePath = '${saveDir.path}/$fileName';
       final file = File(filePath);
-      
+
       // Guardar el archivo
       await file.writeAsBytes(pdfBytes);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -340,7 +354,7 @@ String formatHora(dynamic hora) {
 
   Future<void> _shareCotizacion() async {
     if (_isGeneratingPDF) return;
-    
+
     setState(() {
       _isGeneratingPDF = true;
     });
@@ -348,7 +362,8 @@ String formatHora(dynamic hora) {
     try {
       final pdfBytes = await _generatePDFBytes();
       final tempDir = await getTemporaryDirectory();
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Salón.pdf';
+      final fileName =
+          '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Salón.pdf';
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes);
 
@@ -364,7 +379,8 @@ String formatHora(dynamic hora) {
         [XFile(file.path)],
         text: 'Cotización de salón para ${widget.nombreCliente}',
         subject: 'Cotización de Evento',
-        sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
+        sharePositionOrigin:
+            box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
       );
     } catch (e) {
       if (mounted) {
@@ -560,7 +576,8 @@ String formatHora(dynamic hora) {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Cotización N° ${_formatId(widget.idCotizacion)}',
@@ -588,25 +605,28 @@ String formatHora(dynamic hora) {
                               if (nombreSalon.isNotEmpty)
                                 _buildInfoRow('Salón:', nombreSalon),
                               if (capacidadEsperada > 0)
-                                _buildInfoRow(
-                                    'Capacidad:', '$capacidadEsperada personas'),
+                                _buildInfoRow('Capacidad:',
+                                    '$capacidadEsperada personas'),
                               if (fechaEvento != null)
                                 _buildInfoRow(
                                     'Fecha evento:', formatFecha(fechaEvento)),
                               if (horaInicio != null && horaFin != null)
                                 _buildInfoRow(
-                                  'Horario:', 
+                                  'Horario:',
                                   '${formatHora(horaInicio)} - ${formatHora(horaFin)}',
                                 ),
                               if (tipoArmado.isNotEmpty)
                                 _buildInfoRow('Tipo de armado:', tipoArmado),
                               if (participantes > 0)
-                                _buildInfoRow('Participantes:', '$participantes personas'),
+                                _buildInfoRow('Participantes:',
+                                    '$participantes personas'),
                               const SizedBox(height: 8),
+                              _buildInfoRow('Estado:',
+                                  cotizacionData?['estado'] ?? 'N/D'),
                               _buildInfoRow(
-                                  'Estado:', cotizacionData?['estado'] ?? 'N/D'),
-                              _buildInfoRow('Fecha creación:',
-                                  formatFecha(cotizacionData?['fecha_creacion'])),
+                                  'Fecha creación:',
+                                  formatFecha(
+                                      cotizacionData?['fecha_creacion'])),
                             ],
                           ),
                         ),
@@ -657,7 +677,9 @@ String formatHora(dynamic hora) {
                                 // Encabezado de la tabla
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 12), // Reducido el padding horizontal
+                                      vertical: 12,
+                                      horizontal:
+                                          12), // Reducido el padding horizontal
                                   decoration: BoxDecoration(
                                     color: darkBlue.withOpacity(0.1),
                                     borderRadius: const BorderRadius.vertical(
@@ -667,11 +689,13 @@ String formatHora(dynamic hora) {
                                   child: const Row(
                                     children: [
                                       Expanded(
-                                        flex: 2, // Reducido el flex para descripción
+                                        flex:
+                                            2, // Reducido el flex para descripción
                                         child: Text(
                                           'Descripción',
                                           style: TextStyle(
-                                            fontSize: 12, // Tamaño de fuente más pequeño
+                                            fontSize:
+                                                12, // Tamaño de fuente más pequeño
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -720,7 +744,9 @@ String formatHora(dynamic hora) {
 
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 12, horizontal: 12), // Reducido el padding horizontal
+                                        vertical: 12,
+                                        horizontal:
+                                            12), // Reducido el padding horizontal
                                     decoration: BoxDecoration(
                                       border: Border(
                                         top: BorderSide(
@@ -732,28 +758,33 @@ String formatHora(dynamic hora) {
                                     child: Row(
                                       children: [
                                         Expanded(
-                                          flex: 2, // Reducido el flex para descripción
+                                          flex:
+                                              2, // Reducido el flex para descripción
                                           child: Text(
                                             descripcion.toString(),
                                             style: const TextStyle(
-                                              fontSize: 12, // Tamaño de fuente más pequeño
+                                              fontSize:
+                                                  12, // Tamaño de fuente más pequeño
                                               fontWeight: FontWeight.w500,
                                             ),
-                                            maxLines: 2, // Permitir múltiples líneas
+                                            maxLines:
+                                                2, // Permitir múltiples líneas
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         Expanded(
                                           child: Text(
                                             cantidad.toString(),
-                                            style: const TextStyle(fontSize: 12),
+                                            style:
+                                                const TextStyle(fontSize: 12),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
                                         Expanded(
                                           child: Text(
                                             'Bs ${precioUnitario.toStringAsFixed(2)}',
-                                            style: const TextStyle(fontSize: 12),
+                                            style:
+                                                const TextStyle(fontSize: 12),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
@@ -817,7 +848,8 @@ String formatHora(dynamic hora) {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: darkBlue,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -833,7 +865,8 @@ String formatHora(dynamic hora) {
                                         ),
                                       )
                                     : const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.save, size: 20),
                                           SizedBox(width: 8),
@@ -845,11 +878,13 @@ String formatHora(dynamic hora) {
                             const SizedBox(width: 16),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: _isGeneratingPDF ? null : _shareCotizacion,
+                                onPressed:
+                                    _isGeneratingPDF ? null : _shareCotizacion,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: primaryGreen,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -865,7 +900,8 @@ String formatHora(dynamic hora) {
                                         ),
                                       )
                                     : const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.share, size: 20),
                                           SizedBox(width: 8),
