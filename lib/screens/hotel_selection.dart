@@ -253,7 +253,7 @@ void _filtrarCotizaciones() {
     }
     return 'General';
   }
-
+ 
   Future<void> _crearNuevaCotizacionHabitacion() async {
     final user = supabase.auth.currentUser;
     if (user == null) return;
@@ -385,7 +385,7 @@ void _filtrarCotizaciones() {
               ),
               const SizedBox(height: 20),
               _buildDialogButton(
-                'Crear cotización de habitación',
+                'Crear cotización de hospedaje',
                 Icons.bed,
                 _crearNuevaCotizacionHabitacion,
               ),

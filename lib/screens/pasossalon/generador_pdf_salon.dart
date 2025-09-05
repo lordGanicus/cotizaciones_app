@@ -44,7 +44,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
     font: acterumSignature,
     color: azulOscuro,
   );
-/*print('Participantes antes de generar PDF: ${cotizacion.participantes}');*/
+
   // Carga de imágenes
   pw.MemoryImage? logoImage;
   pw.MemoryImage? membreteImage;
@@ -87,8 +87,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
   }
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
-print('Participantes recibidos en PDF: $participantes');
-print('Celular en PDF: $celular');
+
   // PÁGINA 1
   pdf.addPage(
     pw.Page(
@@ -124,14 +123,19 @@ print('Celular en PDF: $celular');
                           pw.Text('Cliente:', style: estiloNegrita),
                           pw.Text(nombreCliente, style: estiloNormal),
                           pw.SizedBox(height: 4),
-                          pw.Text('CI / NIT: $ciCliente', style: estiloNormal),
+                          pw.Text('C.I / NIT: $ciCliente', style: estiloNormal),
                         ],
                       ),
-                      pw.Text(
-                        'Ref.: Cotización de Servicios de Salón',
-                        style: pw.TextStyle(
+                      // Referencia con espaciado
+                      pw.Container(
+                        margin: const pw.EdgeInsets.only(top: 20),
+                        child: pw.Text(
+                          'Ref.: Cotización de Servicios de Salón',
+                          style: pw.TextStyle(
                             fontStyle: pw.FontStyle.italic,
-                            fontWeight: pw.FontWeight.bold),
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -152,7 +156,6 @@ print('Celular en PDF: $celular');
                   pw.SizedBox(height: 18),
 
                   // NUEVA SECCIÓN: Aspectos relevantes del evento
-                   // debug
                   pw.Text('ASPECTOS RELEVANTES DEL EVENTO', style: estiloNegrita),
                   pw.SizedBox(height: 12),
                   pw.Bullet(
@@ -184,14 +187,6 @@ print('Celular en PDF: $celular');
 
                   pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloNegrita),
                   pw.SizedBox(height: 12),
-                  /*pw.Row(
-                    children: [
-                      pw.Text('Fecha de creación: ', style: estiloNegrita),
-                      pw.Text(formatFecha(cotizacionData?['fecha_creacion']),
-                          style: estiloNormal),
-                    ],
-                  ),
-                  pw.SizedBox(height: 24),*/
                   pw.Table(
                     border: pw.TableBorder.all(color: PdfColors.grey300),
                     columnWidths: {
@@ -255,140 +250,161 @@ print('Celular en PDF: $celular');
     ),
   );
 
-// PÁGINA 2
-pdf.addPage(
-  pw.Page(
-    pageFormat: PdfPageFormat.a4,
-    margin: pw.EdgeInsets.zero,
-    build: (context) {
-      return pw.Stack(
-        children: [
-          if (membreteImage != null)
-            pw.Positioned.fill(
-              child: pw.Image(membreteImage, fit: pw.BoxFit.cover),
-            ),
-          pw.Padding(
-            padding: const pw.EdgeInsets.fromLTRB(40, 80, 40, 60),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                 pw.SizedBox(height: 58),
-                pw.Text('Políticas y Condiciones', style: estiloTitulo),
-                pw.SizedBox(height: 10),
-                
-                // Políticas y condiciones actualizadas
-                pw.Text('Horario de Ingreso (Check-In)', style: estiloNegrita),
-                pw.Text(
-                  'El horario de ingreso es a partir de horas 14:00, en caso que la llegada sea por la madrugada, la reserva debe ser realizada desde una noche antes agregando como una noche extra.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Horario de Salida (Check-Out)', style: estiloNegrita),
-                pw.Text(
-                  'El horario de salida es hasta el mediodía horas 12:00 p.m.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Llegada anticipada (Early Check-In)', style: estiloNegrita),
-                pw.Text(
-                  'En caso de requerir la habitación antes del horario de ingreso, se puede solicitar un ingreso más temprano el cual estaría sujeto a disponibilidad del hotel y según precio establecido.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Salida tardía (Late Check-Out)', style: estiloNegrita),
-                pw.Text(
-                  'Si requiere ocupar la habitación pasado el horario de salida (mediodía), se incrementare el 50% de su tarifa hasta horas 18:00. Pasado este horario se procederá al cobro de una noche extra según el precio proporcionado.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Modificación de Reserva', style: estiloNegrita),
-                pw.Text(
-                  'Toda modificación se debe realizar hasta 24 horas antes de la llegada de cada huésped, caso contrario se realizará el cobro de la noche de hospedaje según la solicitud de reserva realizada inicialmente.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Cancelación', style: estiloNegrita),
-                pw.Text(
-                  'Toda cancelación de reserva, debe ser realizada con 24 horas de anticipación a la llegada de cada huésped, caso contrario se realizará el cobro de la primera noche.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('No-Show', style: estiloNegrita),
-                pw.Text(
-                  'Se aplicará el No-Show, cuando el huésped no haya llegado al hotel, y su reserva no haya sido cancelada o modificada. Se procederá al cobro de la primera noche de hospedaje como penalidad.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 10),
-                
-                pw.Text('Personas con discapacidad', style: estiloNegrita),
-                pw.Text(
-                  'El hotel cuenta con una habitación amplia y cómoda para personas con discapacidad, así como en áreas comunes como el restaurante y baños.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 20),
-                
-                pw.Text(
-                  'Gracias por considerar nuestros servicios. Estamos atentos a cualquier detalle adicional que nos permita asegurar el éxito de su evento.',
-                  style: estiloNormal,
-                  textAlign: pw.TextAlign.justify,
-                ),
-                pw.SizedBox(height: 15),
-                pw.Text('Atentamente:', style: estiloNegrita),
-                pw.SizedBox(height: 15),
-                pw.Center(
-                  child: pw.Column(
-                    children: [
-                      // Nombre del firmante en fuente Acterum con azulOscuro
-                      pw.Text(
-                        'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
-                        style: estiloFirma.copyWith(color: azulOscuro),
-                      ),
-                       pw.SizedBox(height: 8),
-                      pw.Container(
-                        width: 150,
-                        height: 2,
-                        color: PdfColors.grey,
-                      ),
-                      pw.SizedBox(height: 8),
+  // PÁGINA 2 - CON LAS NUEVAS POLÍTICAS
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      build: (context) {
+        return pw.Stack(
+          children: [
+            if (membreteImage != null)
+              pw.Positioned.fill(
+                child: pw.Image(membreteImage, fit: pw.BoxFit.cover),
+              ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.fromLTRB(40, 80, 40, 60),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.SizedBox(height: 58),
+                  pw.Text('CONDICIONES GENERALES', style: estiloTitulo),
+                  pw.SizedBox(height: 10),
+                  
+                  pw.Text(
+                    'Para confirmar la reserva del evento, es necesario realizar un anticipo del 60 % del monto total cotizado. El 40 % restante deberá ser cancelado con una anticipación mínima de 72 horas a la fecha del evento.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'Los pagos podrán realizarse directamente en las oficinas del Hotel Madero o, en su defecto, mediante depósito o transferencia bancaria.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'En caso de no recibir el anticipo correspondiente, la reserva no será considerada confirmada, y no se garantiza la disponibilidad del salón.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 16),
+                  
+                  pw.Text('VIGENCIA DE LA COTIZACIÓN', style: estiloTitulo),
+                  pw.SizedBox(height: 10),
+                  
+                  pw.Text(
+                    'La presente cotización tiene una vigencia de 10 días calendario desde la fecha de emisión.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'La disponibilidad del espacio está sujeta a confirmación escrita por parte del cliente.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'Asimismo, se requiere que la reserva sea gestionada con un mínimo de 72 horas de anticipación respecto a la fecha del evento.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 16),
+                  
+                  pw.Text('ANULACIÓN Y REPROGRAMACIÓN', style: estiloTitulo),
+                  pw.SizedBox(height: 10),
+                  
+                  pw.Text(
+                    'Toda cancelación deberá ser comunicada por escrito, con al menos 15 días naturales de anticipación. Si la anulación se realiza fuera de este plazo, se aplicará un cargo por no presentación (No Show) equivalente al 50 % del valor total cotizado.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'Las solicitudes de reprogramación deberán realizarse también por escrito, con un mínimo de 7 días de anticipación, y estarán sujetas a una penalidad del 20 % sobre el total del evento.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 16),
+                  
+                  pw.Text('CONSIDERACIONES IMPORTANTES', style: estiloTitulo),
+                  pw.SizedBox(height: 10),
+                  
+                  pw.Text(
+                    'No está permitido el ingreso de alimentos externos al salón.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'El ingreso de bebidas será permitido únicamente bajo la modalidad de descorche, con un recargo del 40 % sobre el valor declarado. Este costo cubre el servicio de atención, vajilla y cristalería.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 8),
+                  
+                  pw.Text(
+                    'El incumplimiento de estas condiciones podrá resulten en la cancelación inmediata del servicio sin derecho a reembolso.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 20),
+                  
+                  pw.Text(
+                    'Gracias por considerar nuestros servicios. Estamos atentos a cualquier detalle adicional que nos permita asegurar el éxito de su evento.',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+                  pw.SizedBox(height: 15),
+                  pw.Text('Atentamente:', style: estiloNegrita),
+                  pw.SizedBox(height: 15),
+                  pw.Center(
+                    child: pw.Column(
+                      children: [
+                        // Nombre del firmante en fuente Acterum con azulOscuro
+                        pw.Text(
+                          '${nombreUsuario.split(' ').take(2).join(' ')}',
+                          style: estiloFirma.copyWith(color: azulOscuro),
+                        ),
+                        pw.SizedBox(height: 8),
+                        pw.Container(
+                          width: 150,
+                          height: 2,
+                          color: PdfColors.grey,
+                        ),
+                         pw.SizedBox(height: 8),
                        pw.Text(
                         'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
                         style: estiloNormal,
                       ),
-                     
-                      pw.SizedBox(height: 8),
-                     pw.Text(
-                        'Nro. Tel. ${celular.split(' ').take(2).join(' ')}',
-                        style: estiloNormal,
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text('Reservas y Ventas', style: estiloNormal),
-                      pw.SizedBox(height: 2),
-                      pw.Text(nombreSubestablecimiento, style: estiloNormal),
-                    ],
+                        pw.SizedBox(height: 8),
+                        pw.Text(
+                          'Gerente de Ventas',
+                          style: estiloNormal,
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          nombreSubestablecimiento,
+                          style: estiloNormal,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      );
-    },
-  ),
-);
+          ],
+        );
+      },
+    ),
+  );
 
   return pdf.save();
 }

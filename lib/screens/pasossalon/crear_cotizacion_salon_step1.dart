@@ -75,7 +75,7 @@ class _Paso1CotizacionSalonPageState
     super.dispose();
   }
 
-  // Función para capitalizar cada palabra del nombre*********************************************/
+  // Función para capitalizar cada palabra del nombre
   String _capitalizarNombreCompleto(String nombre) {
     return nombre
         .trim()
@@ -97,6 +97,22 @@ class _Paso1CotizacionSalonPageState
         .join(' ');
   }
 
+  // Función para determinar AM/PM automáticamente basado en la hora
+  String _getPeriodo(TimeOfDay time) {
+    return time.hour < 12 ? 'AM' : 'PM';
+  }
+
+  // Función para formatear la hora con AM/PM y formato 24 horas
+  String _formatTimeWithAmPm(TimeOfDay? time) {
+    if (time == null) return 'Seleccionar hora';
+    
+    String periodo = _getPeriodo(time);
+    int hour = time.hour;
+    int minute = time.minute;
+    
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $periodo';
+  }
+
   Future<void> _seleccionarFechaEvento(BuildContext context) async {
     final ahora = DateTime.now();
     final fecha = await showDatePicker(
@@ -104,7 +120,7 @@ class _Paso1CotizacionSalonPageState
       initialDate: ahora,
       firstDate: ahora,
       lastDate: DateTime(2100),
-      locale: const Locale('es', 'ES'), // Configurar español
+      locale: const Locale('es', 'ES'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -132,7 +148,7 @@ class _Paso1CotizacionSalonPageState
       initialTime: esInicio ? (_horaInicio ?? ahora) : (_horaFin ?? ahora),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
           child: Theme(
             data: Theme.of(context).copyWith(
               colorScheme: ColorScheme.light(
@@ -197,27 +213,23 @@ class _Paso1CotizacionSalonPageState
       if (!fin.isAfter(inicio)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                const Text('La hora fin debe ser posterior a la hora inicio'),
+            content: const Text('La hora fin debe ser posterior a la hora inicio'),
             backgroundColor: errorColor,
           ),
         );
         return;
       }
 
-      // Validar que el evento dure al menos 30 minutos
       if (fin.difference(inicio).inMinutes < 30) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                const Text('La duración mínima del evento debe ser de 30 minutos'),
+            content: const Text('La duración mínima del evento debe ser de 30 minutos'),
             backgroundColor: errorColor,
           ),
         );
         return;
       }
 
-      // Validar capacidad del salón
       final participantes = int.tryParse(_participantesController.text) ?? 0;
       if (participantes <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,7 +263,6 @@ class _Paso1CotizacionSalonPageState
         return;
       }
 
-      // Capitalizar el nombre y tipo de evento antes de guardar
       final nombreCliente = _capitalizarNombreCompleto(_nombreController.text);
       final tipoEvento = _capitalizarTipoEvento(_tipoEventoController.text);
       final ciCliente = _ciController.text.trim();
@@ -345,8 +356,7 @@ class _Paso1CotizacionSalonPageState
     );
   }
 
-  Widget _buildDateTimeButton(
-      String label, IconData icon, VoidCallback onPressed) {
+  Widget _buildDateTimeButton(String label, IconData icon, VoidCallback onPressed) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -357,37 +367,64 @@ class _Paso1CotizacionSalonPageState
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: darkBlue.withOpacity(0.2)),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        minimumSize: const Size(double.minPositive, 48), // Constraints mínimos
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: primaryGreen),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: darkBlue.withOpacity(0.8),
-                ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: 0,
+          maxWidth: double.infinity,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 20, color: primaryGreen),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: darkBlue.withOpacity(0.8),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          Icon(Icons.arrow_drop_down, color: darkBlue.withOpacity(0.5)),
-        ],
+            ),
+            Icon(Icons.arrow_drop_down, size: 20, color: darkBlue.withOpacity(0.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeButton(bool esInicio) {
+    final hora = esInicio ? _horaInicio : _horaFin;
+    final textoHora = hora != null ? _formatTimeWithAmPm(hora) : 'Seleccionar hora';
+    
+    return SizedBox(
+      width: double.infinity,
+      child: _buildDateTimeButton(
+        textoHora,
+        Icons.access_time,
+        () => _seleccionarHora(context, esInicio),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Usar diferente provider según si idSubestablecimiento es null o no
     final salonesAsync = widget.idSubestablecimiento == null
         ? ref.watch(salonesPorEstablecimientoProvider(widget.idEstablecimiento))
-        : ref.watch(
-            salonesPorSubestablecimientoProvider(widget.idSubestablecimiento!));
+        : ref.watch(salonesPorSubestablecimientoProvider(widget.idSubestablecimiento!));
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -398,327 +435,325 @@ class _Paso1CotizacionSalonPageState
         elevation: 0,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Sección Selección de Salón
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionTitle('Selección de Salón'),
-                      const SizedBox(height: 12),
-                      salonesAsync.when(
-                        data: (salones) {
-                          if (salones.isEmpty) {
-                            return Text(
-                              'No hay salones disponibles',
-                              style: TextStyle(color: secondaryTextColor),
-                            );
-                          }
-                          if (_salonSeleccionado == null && salones.isNotEmpty) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              setState(() {
-                                _salonSeleccionado = salones.first;
-                              });
-                            });
-                          }
-
-                          return DropdownButtonFormField<Salon>(
-                            value: _salonSeleccionado,
-                            items: salones
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(
-                                        s.nombre,
-                                        style: TextStyle(color: textColor),
-                                      ),
-                                    ))
-                                .toList(),
-                            onChanged: (salon) {
-                              setState(() {
-                                _salonSeleccionado = salon;
-                              });
-                            },
-                            decoration: _inputDecoration('Salón'),
-                            dropdownColor: cardBackground,
-                            style: TextStyle(color: textColor),
-                            validator: (value) =>
-                                value == null ? 'Seleccione un salón' : null,
-                          );
-                        },
-                        loading: () => Center(
-                          child: CircularProgressIndicator(color: primaryGreen),
-                        ),
-                        error: (e, st) => Text(
-                          'Error al cargar salones: $e',
-                          style: TextStyle(color: errorColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
               ),
-
-              const SizedBox(height: 20),
-
-              // Sección Datos del Cliente
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionTitle('Datos del Cliente'),
-                      
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _nombreController,
-                        decoration: _inputDecoration('Nombre del cliente o empresa'),
-                        style: TextStyle(color: textColor),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'El nombre es obligatorio';
-                          }
-                          if (!_nombreRegExp.hasMatch(value.trim())) {
-                            return 'Solo se permiten letras, espacios y puntos';
-                          }
-                          return null;
-                        },
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]')),
-                        ],
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sección Selección de Salón
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _ciController,
-                        decoration: _inputDecoration('CI o NIT (opcional)'),
-                        style: TextStyle(color: textColor),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            signed: false, decimal: false),
-                        validator: (value) {
-                          if (value != null && value.trim().isNotEmpty) {
-                            if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
-                              return 'Solo se permiten números en CI o NIT';
-                            }
-                            if (value.trim().length < 4) {
-                              return 'El CI/NIT debe tener al menos 4 dígitos';
-                            }
-                          }
-                          return null;
-                        },
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(15),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle('Selección de Salón'),
+                            const SizedBox(height: 12),
+                            salonesAsync.when(
+                              data: (salones) {
+                                if (salones.isEmpty) {
+                                  return Text(
+                                    'No hay salones disponibles',
+                                    style: TextStyle(color: secondaryTextColor),
+                                  );
+                                }
+                                if (_salonSeleccionado == null && salones.isNotEmpty) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    setState(() {
+                                      _salonSeleccionado = salones.first;
+                                    });
+                                  });
+                                }
 
-              const SizedBox(height: 20),
-
-              // Sección Detalles del Evento
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionTitle('Detalles del Evento'),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _tipoEventoController,
-                        decoration: _inputDecoration('Tipo de evento'),
-                        style: TextStyle(color: textColor),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'El tipo de evento es obligatorio';
-                          }
-                          if (!_tipoEventoRegExp.hasMatch(value.trim())) {
-                            return 'Solo se permiten letras, espacios y guiones';
-                          }
-                          return null;
-                        },
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]')),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDateTimeButton(
-                        _fechaEvento == null
-                            ? 'Seleccionar fecha'
-                            : '${_fechaEvento!.day.toString().padLeft(2, '0')}/${_fechaEvento!.month.toString().padLeft(2, '0')}/${_fechaEvento!.year}',
-                        Icons.calendar_today,
-                        () => _seleccionarFechaEvento(context),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDateTimeButton(
-                              _horaInicio == null
-                                  ? 'Hora inicio'
-                                  : _horaInicio!.format(context),
-                              Icons.access_time,
-                              () => _seleccionarHora(context, true),
+                                return DropdownButtonFormField<Salon>(
+                                  value: _salonSeleccionado,
+                                  items: salones
+                                      .map((s) => DropdownMenuItem(
+                                            value: s,
+                                            child: Text(
+                                              s.nombre,
+                                              style: TextStyle(color: textColor),
+                                            ),
+                                          ))
+                                      .toList(),
+                                  onChanged: (salon) {
+                                    setState(() {
+                                      _salonSeleccionado = salon;
+                                    });
+                                  },
+                                  decoration: _inputDecoration('Salón'),
+                                  dropdownColor: cardBackground,
+                                  style: TextStyle(color: textColor),
+                                  validator: (value) =>
+                                      value == null ? 'Seleccione un salón' : null,
+                                );
+                              },
+                              loading: () => Center(
+                                child: CircularProgressIndicator(color: primaryGreen),
+                              ),
+                              error: (e, st) => Text(
+                                'Error al cargar salones: $e',
+                                style: TextStyle(color: errorColor),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildDateTimeButton(
-                              _horaFin == null
-                                  ? 'Hora fin'
-                                  : _horaFin!.format(context),
-                              Icons.access_time,
-                              () => _seleccionarHora(context, false),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _participantesController,
-                        decoration:
-                            _inputDecoration('Cantidad de participantes'),
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(color: textColor),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'La cantidad de participantes es obligatoria';
-                          }
-                          final n = int.tryParse(value.trim());
-                          if (n == null || n <= 0) {
-                            return 'Ingrese una cantidad válida mayor a cero';
-                          }
-                          return null;
-                        },
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _tipoArmado,
-                        decoration: _inputDecoration('Tipo de armado'),
-                        dropdownColor: cardBackground,
-                        style: TextStyle(color: textColor),
-                        items: _tiposArmado
-                            .map((tipo) => DropdownMenuItem(
-                                  value: tipo,
-                                  child: Text(tipo,
-                                      style: TextStyle(color: textColor)),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _tipoArmado = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _precioController,
-                        decoration: _inputDecoration(
-                          'Precio total del salón (Bs)',
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: Text(
-                              'Bs',
-                              style: TextStyle(color: secondaryTextColor),
-                            ),
-                          ),
+                          ],
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        style: TextStyle(color: textColor),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'El precio es obligatorio';
-                          }
-                          final precio = double.tryParse(value.trim());
-                          if (precio == null || precio <= 0) {
-                            return 'Ingrese un precio válido mayor a cero';
-                          }
-                          if (precio > 100000) {
-                            return 'El precio no puede exceder Bs 100,000';
-                          }
-                          return null;
-                        },
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}')),
-                          LengthLimitingTextInputFormatter(10),
-                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Botón Siguiente
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Capitalizar antes de guardar
-                    if (_nombreController.text.isNotEmpty) {
-                      _nombreController.text = _capitalizarNombreCompleto(_nombreController.text);
-                    }
-                    if (_tipoEventoController.text.isNotEmpty) {
-                      _tipoEventoController.text = _capitalizarTipoEvento(_tipoEventoController.text);
-                    }
-                    _guardarYContinuar();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Continuar', style: TextStyle(fontSize: 16)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20),
-                    ],
-                  ),
+
+                    const SizedBox(height: 20),
+
+                    // Sección Datos del Cliente
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle('Datos del Cliente'),
+                            
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _nombreController,
+                              decoration: _inputDecoration('Nombre del cliente o empresa'),
+                              style: TextStyle(color: textColor),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'El nombre es obligatorio';
+                                }
+                                if (!_nombreRegExp.hasMatch(value.trim())) {
+                                  return 'Solo se permiten letras, espacios y puntos';
+                                }
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]')),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _ciController,
+                              decoration: _inputDecoration('CI or NIT (opcional)'),
+                              style: TextStyle(color: textColor),
+                              keyboardType: const TextInputType.numberWithOptions(
+                                  signed: false, decimal: false),
+                              validator: (value) {
+                                if (value != null && value.trim().isNotEmpty) {
+                                  if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
+                                    return 'Solo se permiten números en CI o NIT';
+                                  }
+                                  if (value.trim().length < 4) {
+                                    return 'El CI/NIT debe tener al menos 4 dígitos';
+                                  }
+                                }
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(15),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Sección Detalles del Evento
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: darkBlue.withOpacity(0.1), width: 1),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle('Detalles del Evento'),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _tipoEventoController,
+                              decoration: _inputDecoration('Tipo de evento'),
+                              style: TextStyle(color: textColor),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'El tipo de evento es obligatorio';
+                                }
+                                if (!_tipoEventoRegExp.hasMatch(value.trim())) {
+                                  return 'Solo se permiten letras, espacios y guiones';
+                                }
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]')),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: _buildDateTimeButton(
+                                _fechaEvento == null
+                                    ? 'Seleccionar fecha'
+                                    : '${_fechaEvento!.day.toString().padLeft(2, '0')}/${_fechaEvento!.month.toString().padLeft(2, '0')}/${_fechaEvento!.year}',
+                                Icons.calendar_today,
+                                () => _seleccionarFechaEvento(context),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: _buildTimeButton(true),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: _buildTimeButton(false),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _participantesController,
+                              decoration: _inputDecoration('Cantidad de participantes'),
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(color: textColor),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'La cantidad de participantes es obligatoria';
+                                }
+                                final n = int.tryParse(value.trim());
+                                if (n == null || n <= 0) {
+                                  return 'Ingrese una cantidad válida mayor a cero';
+                                }
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              value: _tipoArmado,
+                              decoration: _inputDecoration('Tipo de armado'),
+                              dropdownColor: cardBackground,
+                              style: TextStyle(color: textColor),
+                              items: _tiposArmado
+                                  .map((tipo) => DropdownMenuItem(
+                                        value: tipo,
+                                        child: Text(tipo, style: TextStyle(color: textColor)),
+                                      ))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _tipoArmado = value;
+                                  });
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _precioController,
+                              decoration: _inputDecoration(
+                                'Precio total del salón (Bs)',
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: Text(
+                                    'Bs',
+                                    style: TextStyle(color: secondaryTextColor),
+                                  ),
+                                ),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: TextStyle(color: textColor),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'El precio es obligatorio';
+                                }
+                                final precio = double.tryParse(value.trim());
+                                if (precio == null || precio <= 0) {
+                                  return 'Ingrese un precio válido mayor a cero';
+                                }
+                                if (precio > 100000) {
+                                  return 'El precio no puede exceder Bs 100,000';
+                                }
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // Botón Siguiente
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_nombreController.text.isNotEmpty) {
+                            _nombreController.text = _capitalizarNombreCompleto(_nombreController.text);
+                          }
+                          if (_tipoEventoController.text.isNotEmpty) {
+                            _tipoEventoController.text = _capitalizarTipoEvento(_tipoEventoController.text);
+                          }
+                          _guardarYContinuar();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          minimumSize: const Size(double.minPositive, 50),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Continuar', style: TextStyle(fontSize: 16)),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
