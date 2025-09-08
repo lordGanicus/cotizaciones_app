@@ -748,7 +748,7 @@ class _Paso1CotizacionSalonPageState
                         ),
                       ),
                     ),
-                  ],
+                  ], // children column 
                 ),
               ),
             ),

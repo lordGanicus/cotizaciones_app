@@ -1,3 +1,5 @@
+// lib/providers/pestablecimiento.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -5,6 +7,7 @@ import '../models/Mestablecimiento.dart';
 import '../models/Msubestablecimiento.dart';
 import '../utils/cloudinary_upload.dart';
 import 'usuario_provider.dart';
+
 final supabase = Supabase.instance.client;
 
 final establecimientosProvider =
@@ -45,6 +48,8 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
     String? logotipoPublicId,
     String? membrete,
     String? membretePublicId,
+    String checkin = "14:00",
+    String checkout = "12:00",
   }) async {
     final response = await supabase.from('establecimientos').insert({
       'nombre': nombre,
@@ -52,6 +57,8 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
       'logotipo_public_id': logotipoPublicId,
       'membrete': membrete,
       'membrete_public_id': membretePublicId,
+      'checkin': checkin,
+      'checkout': checkout,
     }).select().single();
 
     final nuevo = Establecimiento.fromMap(response);
@@ -66,6 +73,8 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
     String? logotipoPublicId,
     String? membrete,
     String? membretePublicId,
+    required String checkin,
+    required String checkout,
   }) async {
     await supabase.from('establecimientos').update({
       'nombre': nombre,
@@ -73,6 +82,8 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
       'logotipo_public_id': logotipoPublicId,
       'membrete': membrete,
       'membrete_public_id': membretePublicId,
+      'checkin': checkin,
+      'checkout': checkout,
     }).eq('id', id);
 
     final listaActual = state.value ?? [];
@@ -85,6 +96,8 @@ class EstablecimientosNotifier extends AsyncNotifier<List<Establecimiento>> {
           logotipoPublicId: logotipoPublicId,
           membrete: membrete,
           membretePublicId: membretePublicId,
+          checkin: checkin,
+          checkout: checkout,
         );
       }
       return e;
@@ -233,13 +246,10 @@ class SubestablecimientosNotifier
   void limpiar() {
     state = const AsyncValue.data([]);
   }
-  final subestablecimientosProvider = AsyncNotifierProviderFamily<
-    SubestablecimientosNotifier, List<Subestablecimiento>, String>(
-  SubestablecimientosNotifier.new,
-);
-
 }
-final subestablecimientoPorIdProvider = FutureProvider.family<Subestablecimiento, String>((ref, idSubestablecimiento) async {
+
+final subestablecimientoPorIdProvider =
+    FutureProvider.family<Subestablecimiento, String>((ref, idSubestablecimiento) async {
   final supabase = Supabase.instance.client;
 
   final response = await supabase
@@ -251,12 +261,14 @@ final subestablecimientoPorIdProvider = FutureProvider.family<Subestablecimiento
   return Subestablecimiento.fromMap(response as Map<String, dynamic>);
 });
 
-final establecimientosFiltradosProvider = FutureProvider<List<Establecimiento>>((ref) async {
+final establecimientosFiltradosProvider =
+    FutureProvider<List<Establecimiento>>((ref) async {
   final usuario = await ref.watch(usuarioActualProvider.future);
 
   var query = supabase.from('establecimientos').select();
 
-  if (usuario.rolNombre?.toLowerCase() == 'gerente' && usuario.idEstablecimiento != null) {
+  if (usuario.rolNombre?.toLowerCase() == 'gerente' &&
+      usuario.idEstablecimiento != null) {
     // El gerente solo ve su establecimiento
     query = query.eq('id', usuario.idEstablecimiento!);
   }

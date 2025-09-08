@@ -235,9 +235,12 @@ String formatFechaHoraEvento(String? fecha, String? hora) {
       if (!await saveDir.exists()) {
         await saveDir.create(recursive: true);
       }
-      
+      String sanitizeFileName(String name) {
+        // Reemplazar caracteres problemáticos pero mantener tildes y ñ
+        return name.replaceAll(RegExp(r'[\\/*?:"<>|]'), '');
+      } 
       // Crear nombre del archivo
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización del restaurante.pdf';
+      final fileName = '${sanitizeFileName(widget.nombreCliente)} - Cotización del restaurante.pdf';
       final filePath = '${saveDir.path}/$fileName';
       final file = File(filePath);
       

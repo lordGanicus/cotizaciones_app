@@ -11,7 +11,6 @@ class PantallaEstablecimientos extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Usamos el provider filtrado para mostrar establecimientos según rol
     final establecimientosAsync = ref.watch(establecimientosFiltradosProvider);
     final usuarioAsync = ref.watch(usuarioActualProvider);
 
@@ -42,9 +41,28 @@ class PantallaEstablecimientos extends ConsumerWidget {
                         )
                       : const Icon(Icons.business, size: 50),
                   title: Text(est.nombre),
-                  subtitle: Text(est.membrete != null && est.membrete!.isNotEmpty
-                      ? est.membrete!
-                      : 'Sin membrete'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Check-In: ${est.checkin}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        'Check-Out: ${est.checkout}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      if (est.membrete != null && est.membrete!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Membrete disponible',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 12),
+                          ),
+                        ),
+                    ],
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -72,7 +90,8 @@ class PantallaEstablecimientos extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete),
-                        onPressed: () => _confirmarEliminar(context, ref, est.id),
+                        onPressed: () =>
+                            _confirmarEliminar(context, ref, est.id),
                       ),
                     ],
                   ),
@@ -81,7 +100,7 @@ class PantallaEstablecimientos extends ConsumerWidget {
             ),
           ),
           floatingActionButton: usuario.rolNombre?.toLowerCase() == 'gerente'
-              ? null // Gerente NO puede agregar establecimientos
+              ? null
               : FloatingActionButton(
                   onPressed: () => showDialog(
                     context: context,

@@ -77,7 +77,10 @@ class _CrearCotizacionHabitacionStep1State
   }
 
   bool _validarNombre(String nombre) {
-    final regex = RegExp(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*$');
+    // Ahora permite letras, espacios y puntos
+    final regex = RegExp(
+        r'^[A-ZÁÉÍÓÚÑ][a-zA-ZáéíóúñÑ.]*'
+        r'(?:\s[A-ZÁÉÍÓÚÑ][a-zA-ZáéíóúñÑ.]*)*$');
     return regex.hasMatch(nombre);
   }
 
@@ -95,7 +98,8 @@ class _CrearCotizacionHabitacionStep1State
     if (nombre.isEmpty || !_validarNombre(nombre)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Ingrese un nombre válido (solo letras y con mayúscula inicial en cada palabra)'),
+          content: Text(
+              'Ingrese un nombre válido (letras, puntos y con mayúscula inicial en cada palabra)'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -265,7 +269,7 @@ class _CrearCotizacionHabitacionStep1State
                           controller: _nombreClienteController,
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(
-                                RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                                RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.]')),
                           ],
                           style: const TextStyle(color: textPrimary),
                           decoration: const InputDecoration(

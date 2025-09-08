@@ -4,7 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle;
 
-Future<Uint8List> generarPdfCotizacionHabitacion({
+Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
   required String nombreHotel,
   String? logoUrl,
   String? membreteUrl,
@@ -28,7 +28,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
 
   // Estilos
   final azulOscuro = PdfColor.fromInt(0xFF0D3B66);
-  final estiloTitulo = pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold);
+  final estiloTitulo = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
   final estiloNegrita = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
   final estiloNormal = pw.TextStyle(fontSize: 11);
   final estiloFirma = pw.TextStyle(
@@ -73,7 +73,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
   }
 
   // =========================
-  // PÁGINA 1: Cotización
+  // PÁGINA 1: Cotización (sin cambios)
   // =========================
   pdf.addPage(
     pw.Page(
@@ -92,7 +92,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   /*if (logoImage != null)
-                    pw.Center(child: pw.Image(logoImage, height: 80)),*/
+                  pw.Center(child: pw.Image(logoImage, height: 80)),*/
                   pw.SizedBox(height: 20),
 
                   // Datos cliente
@@ -231,7 +231,7 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
   );
 
   // =========================
-  // PÁGINA 2: Condiciones Generales dinámicas con Check-In y Check-Out desde el establecimiento
+  // PÁGINA 2: Políticas y Condiciones
   // =========================
   pdf.addPage(
     pw.Page(
@@ -250,15 +250,47 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.SizedBox(height: 58),
-                  pw.Center(child: pw.Text('Condiciones Generales', style: estiloTitulo)),
+                  pw.Center(child: pw.Text('Políticas y Condiciones', style: estiloTitulo)),
                   pw.SizedBox(height: 20),
-                  ..._condicionesGeneralesDinamicas(estiloNegrita, estiloNormal, checkIn, checkOut),
-                  pw.SizedBox(height: 20),
+                  ..._politicasYCondiciones(estiloNegrita, estiloNormal, checkIn, checkOut),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 
+  // =========================
+  // PÁGINA 3: Obligaciones y Firma
+  // =========================
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      build: (context) {
+        return pw.Stack(
+          children: [
+            if (membreteImage != null)
+              pw.Positioned.fill(
+                child: pw.Image(membreteImage, fit: pw.BoxFit.cover),
+              ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.fromLTRB(40, 80, 40, 60),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.SizedBox(height: 58),
+                  pw.Center(child: pw.Text('Obligaciones', style: estiloTitulo)),
+                  pw.SizedBox(height: 20),
+                  ..._obligaciones(estiloNegrita, estiloNormal),
+                  pw.SizedBox(height: 40),
+                  
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 20),
+                  pw.SizedBox(height: 40),
 
-                  // Firma centrada
+                  // Firma centrada (ahora en la tercera página)
                   pw.Center(
                     child: pw.Column(
                       children: [
@@ -294,55 +326,96 @@ pw.Widget _cell(String text) {
   );
 }
 
-List<pw.Widget> _condicionesGeneralesDinamicas(
+List<pw.Widget> _politicasYCondiciones(
   pw.TextStyle estiloNegrita,
   pw.TextStyle estiloNormal,
   String checkIn,
   String checkOut,
 ) {
-  final condiciones = [
+  final politicas = [
     {
-      'titulo': 'Validez de la cotización:',
-      'contenido': 'La presente propuesta tiene una validez de 15 días calendario a partir de la fecha de emisión.'
+      'titulo': 'Horario de Ingreso (Check-In)',
+      'contenido': 'El horario de ingreso es a partir de las $checkIn. En caso de que la llegada se efectúe durante la madrugada, la reserva deberá gestionarse a partir de la noche anterior, incluyendo una noche adicional.'
     },
     {
-      'titulo': 'Horario de ingreso (Check-In):',
-      'contenido': 'El horario de ingreso es a partir de $checkIn. En caso de llegada durante la madrugada, la reserva deberá gestionarse desde la noche anterior.'
-    },
-    {
-      'titulo': 'Horario de salida (Check-Out):',
+      'titulo': 'Horario de Salida (Check-Out)',
       'contenido': 'El horario de salida es hasta las $checkOut horas del mediodía.'
     },
     {
-      'titulo': 'Formas de pago aceptadas:',
-      'contenido': 'Se aceptan transferencias bancarias, tarjetas de crédito/débito (Visa y Mastercard) y efectivo.'
+      'titulo': 'Llegada anticipada (Early Check-In)',
+      'contenido': 'En caso de requerir la habitación antes del horario de ingreso, se puede solicitar un ingreso más temprano el cual estaría sujeto a disponibilidad del hotel y según precio establecido.'
     },
     {
-      'titulo': 'Política de cancelaciones:',
-      'contenido': 'Toda cancelación deberá comunicarse con un mínimo de 24 horas de anticipación a la fecha de ingreso.'
+      'titulo': 'Salida tardía (Late Check-Out)',
+      'contenido': 'Si requiere ocupar la habitación pasado el horario de salida (mediodía), se incrementare el 50% de su tarifa hasta horas 18:00. Pasado este horario se procederá al cobro de una noche extra según el precio proporcionado.'
     },
     {
-      'titulo': 'Modificaciones:',
-      'contenido': 'Cualquier cambio en la reserva deberá ser notificado y aprobado con al menos 24 horas de antelación.'
+      'titulo': 'Modificación de Reserva',
+      'contenido': 'Toda modificación se debe realizar hasta 24 horas antes de la llegada de cada huésped, caso contrario se realizará el cobro de la noche de hospedaje según la solicitud de reserva realizada inicialmente.'
     },
     {
-      'titulo': 'Responsabilidades del cliente:',
-      'contenido': 'El cliente se compromete a respetar las normas del hotel y a preservar el buen estado de las instalaciones.'
+      'titulo': 'Cancelación',
+      'contenido': 'Toda cancelación de reserva, debe ser realizada con 24 horas de anticipación a la llegada de cada huésped, caso contrario se realizará el cobro de la primera noche.'
     },
     {
-      'titulo': 'Atención personalizada:',
-      'contenido': 'Nuestro equipo estará disponible para brindar asistencia durante toda su estadía, asegurando una experiencia satisfactoria y cómoda.'
+      'titulo': 'No-Show',
+      'contenido': 'Se aplicará el No-Show, cuando el huésped no haya llegado al hotel, y su reserva no haya sido cancelada o modificada. Se procederá al cobro de la primera noche de hospedaje como penalidad.'
+    },
+    {
+      'titulo': 'Personas con discapacidad',
+      'contenido': 'El hotel cuenta con una habitación amplia y cómoda para personas con discapacidad, así como en áreas comunes como el restaurante y baños.'
     },
   ];
 
-  return condiciones.expand((c) {
+  return politicas.expand((p) {
     return [
-      pw.Text(c['titulo']!, style: estiloNegrita),
+      pw.Bullet(text: p['titulo']!, style: estiloNegrita),
       pw.Padding(
-        padding: const pw.EdgeInsets.only(left: 14, top: 2),
-        child: pw.Text(c['contenido']!, style: estiloNormal, textAlign: pw.TextAlign.justify),
+        padding: const pw.EdgeInsets.only(left: 14, top: 2, bottom: 14),
+        child: pw.Text(p['contenido']!, style: estiloNormal, textAlign: pw.TextAlign.justify),
       ),
-      pw.SizedBox(height: 14),
+    ];
+  }).toList();
+}
+
+List<pw.Widget> _obligaciones(
+  pw.TextStyle estiloNegrita,
+  pw.TextStyle estiloNormal,
+) {
+  final obligaciones = [
+    {
+      'titulo': 'Niños',
+      'contenido': 'Se admiten niños menores a 10 años sin ningún cargo, siempre y cuando compartan la cama con sus papas. Mayores a 10 años pagan como una persona adulta extra.'
+    },
+    {
+      'titulo': 'Política de Edad Mínima',
+      'contenido': 'Se permite el ingreso únicamente a huéspedes mayores de 18 años. Los menores de edad deberán estar acompañados por un familiar.'
+    },
+    {
+      'titulo': 'Política de Libre de Tabaco',
+      'contenido': 'El hotel es Libre de Tabaco (Ley Nro.1333 del Medio Ambiente). En caso de fumar dentro de nuestras habitaciones o áreas no asignadas, se realizará un cargo de limpieza de USD. 100.00.'
+    },
+    {
+      'titulo': 'Ruidos y Molestias',
+      'contenido': 'No es permitido realizar fiestas dentro nuestras habitaciones o suites. Cualquier reclamo por ruidos o molestias se realizará el desalojo del hotel sin el reembolso de la noche de hospedaje.'
+    },
+    {
+      'titulo': 'Identificación',
+      'contenido': 'Todo huésped debe presentar su documento de identificación o pasaporte al momento de su registro, en el caso de huéspedes extranjeros también deben presentar la boleta de ingreso al país o sello de ingreso al país en el pasaporte. Caso contrario no se permitirá el ingreso o registro a nuestro hotel.'
+    },
+    {
+      'titulo': 'Formas de Pago',
+      'contenido': 'Se admite el pago en efectivo, mediante tarjetas de débito o crédito (Visa y MasterCard) y a través de cobros por código QR.'
+    },
+  ];
+
+  return obligaciones.expand((o) {
+    return [
+      pw.Bullet(text: o['titulo']!, style: estiloNegrita),
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(left: 14, top: 2, bottom: 14),
+        child: pw.Text(o['contenido']!, style: estiloNormal, textAlign: pw.TextAlign.justify),
+      ),
     ];
   }).toList();
 }

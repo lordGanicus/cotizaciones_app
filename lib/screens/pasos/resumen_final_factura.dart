@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:printing/printing.dart';
 import 'generador_pdf_habitacion.dart';
+import '2generador_pdf_habitacion.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -38,11 +39,17 @@ class _ResumenFinalCotizacionHabitacionPageState
   static const Color borderColor = Color(0xFFE0E0E0);
   static const Color errorColor = Color(0xFFE74C3C);
 
+  // Opciones para el dropdown
+  final List<String> tiposCotizacion = ['Cotización Básica', 'Cotización Detallada'];
+  String tipoSeleccionado = 'Cotización Básica';
+
   late final SupabaseClient supabase;
   String? nombreHotel;
   String? logoHotel;
   String? membreteHotel;
   String? nombreUsuario;
+  String? checkin;
+  String? checkout;
   Map<String, dynamic>? cotizacionData;
   List<Map<String, dynamic>> items = [];
   double totalFinal = 0;
@@ -108,13 +115,15 @@ class _ResumenFinalCotizacionHabitacionPageState
 
       final establecimientoResp = await supabase
           .from('establecimientos')
-          .select('nombre, logotipo, membrete')
+          .select('nombre, logotipo, membrete, checkin, checkout')
           .eq('id', idEstablecimiento)
           .single();
 
       nombreHotel = establecimientoResp['nombre'] as String?;
       logoHotel = establecimientoResp['logotipo'] as String?;
       membreteHotel = establecimientoResp['membrete'] as String?;
+      checkin = establecimientoResp['checkin'] as String?;
+      checkout = establecimientoResp['checkout'] as String?;
 
       final cotizacionResp = await supabase
           .from('cotizaciones')
@@ -167,96 +176,40 @@ class _ResumenFinalCotizacionHabitacionPageState
   }
 
   Future<Uint8List> _generatePDFBytes() async {
-    return await generarPdfCotizacionHabitacion(
-      nombreHotel: nombreHotel ?? 'Hotel',
-      membreteUrl: membreteHotel,
-      idCotizacion: widget.idCotizacion,
-      nombreCliente: widget.nombreCliente,
-      ciCliente: widget.ciCliente,
-      cotizacionData: cotizacionData,
-      items: items,
-      totalFinal: totalFinal,
-      nombreUsuario: nombreUsuario ?? 'Usuario',
-    );
-  }
-
-Future<void> _savePDF() async {
-  if (_isGeneratingPDF) return;
-  
-  setState(() {
-    _isGeneratingPDF = true;
-  });
-
-  try {
-    final pdfBytes = await _generatePDFBytes();
-    
-    // Usamos getExternalStorageDirectory para Android y getApplicationDocumentsDirectory para iOS
-    final directory = Platform.isAndroid 
-        ? await getExternalStorageDirectory()
-        : await getApplicationDocumentsDirectory();
-    
-    if (directory == null) {
-      throw 'No se pudo acceder al directorio de almacenamiento';
-    }
-    
-    // Crear subdirectorio si no existe
-    final saveDir = Directory('${directory.path}/Cotizaciones');
-    if (!await saveDir.exists()) {
-      await saveDir.create(recursive: true);
-    }
-    
-    // Crear nombre del archivo
-    final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización de hospedaje.pdf';
-    final filePath = '${saveDir.path}/$fileName';
-    final file = File(filePath);
-    
-    // Guardar el archivo
-    await file.writeAsBytes(pdfBytes);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('PDF guardado en: $filePath'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          backgroundColor: primaryGreen,
-          action: SnackBarAction(
-            label: 'Abrir',
-            textColor: Colors.white,
-            onPressed: () async {
-              if (Platform.isAndroid || Platform.isIOS) {
-                final result = await File(filePath).exists();
-                if (result) {
-                  await Share.shareXFiles([XFile(filePath)]);
-                }
-              }
-            },
-          ),
-        ),
+    if (tipoSeleccionado == 'Cotización Básica') {
+      return await generarPdfCotizacionHabitacion(
+        nombreHotel: nombreHotel ?? 'Hotel',
+        logoUrl: logoHotel,
+        membreteUrl: membreteHotel,
+        idCotizacion: widget.idCotizacion,
+        nombreCliente: widget.nombreCliente,
+        ciCliente: widget.ciCliente,
+        cotizacionData: cotizacionData,
+        items: items,
+        totalFinal: totalFinal,
+        nombreUsuario: nombreUsuario ?? 'Usuario',
+        checkIn: checkin ?? '14:00',
+        checkOut: checkout ?? '12:00',
+      );
+    } else {
+      return await generarPdfCotizacionHabitacionDetallada(
+        nombreHotel: nombreHotel ?? 'Hotel',
+        logoUrl: logoHotel,
+        membreteUrl: membreteHotel,
+        idCotizacion: widget.idCotizacion,
+        nombreCliente: widget.nombreCliente,
+        ciCliente: widget.ciCliente,
+        cotizacionData: cotizacionData,
+        items: items,
+        totalFinal: totalFinal,
+        nombreUsuario: nombreUsuario ?? 'Usuario',
+        checkIn: checkin ?? '14:00',
+        checkOut: checkout ?? '12:00',
       );
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar PDF: $e'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          backgroundColor: errorColor,
-        ),
-      );
-    }
-  } finally {
-    setState(() {
-      _isGeneratingPDF = false;
-    });
   }
-}
-    Future<void> _shareCotizacion() async {
+
+  Future<void> _savePDF() async {
     if (_isGeneratingPDF) return;
     
     setState(() {
@@ -265,8 +218,89 @@ Future<void> _savePDF() async {
 
     try {
       final pdfBytes = await _generatePDFBytes();
+      
+      // Usamos getExternalStorageDirectory para Android y getApplicationDocumentsDirectory para iOS
+      final directory = Platform.isAndroid 
+          ? await getExternalStorageDirectory()
+          : await getApplicationDocumentsDirectory();
+      
+      if (directory == null) {
+        throw 'No se pudo acceder al directorio de almacenamiento';
+      }
+      
+      // Crear subdirectorio si no existe
+      final saveDir = Directory('${directory.path}/Cotizaciones');
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+      
+      // Crear nombre del archivo
+      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - $tipoSeleccionado.pdf';
+      final filePath = '${saveDir.path}/$fileName';
+      final file = File(filePath);
+      
+      // Guardar el archivo
+      await file.writeAsBytes(pdfBytes);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF guardado en: $filePath'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: primaryGreen,
+            action: SnackBarAction(
+              label: 'Abrir',
+              textColor: Colors.white,
+              onPressed: () async {
+                if (Platform.isAndroid || Platform.isIOS) {
+                  final result = await File(filePath).exists();
+                  if (result) {
+                    await Share.shareXFiles([XFile(filePath)]);
+                  }
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar PDF: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isGeneratingPDF = false;
+      });
+    }
+  }
+
+  Future<void> _shareCotizacion() async {
+    if (_isGeneratingPDF) return;
+    
+    setState(() {
+      _isGeneratingPDF = true;
+    });
+    String sanitizeFileName(String name) {
+      // Reemplazar caracteres problemáticos pero mantener tildes y ñ
+      return name.replaceAll(RegExp(r'[\\/*?:"<>|]'), '');
+    }
+    
+    try {
+      final pdfBytes = await _generatePDFBytes();
       final tempDir = await getTemporaryDirectory();
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización Habitación.pdf';
+      final fileName = '${sanitizeFileName(widget.nombreCliente)} - $tipoSeleccionado.pdf';
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes);
 
@@ -280,8 +314,8 @@ Future<void> _savePDF() async {
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Cotización de habitación para ${widget.nombreCliente}',
-        subject: 'Cotización de Hospedaje',
+        text: '$tipoSeleccionado para ${widget.nombreCliente}',
+        subject: tipoSeleccionado,
         sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
       );
     } catch (e) {
@@ -299,6 +333,7 @@ Future<void> _savePDF() async {
       });
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -390,6 +425,39 @@ Future<void> _savePDF() async {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Dropdown para seleccionar tipo de cotización
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: borderColor, width: 1),
+                          ),
+                          child: DropdownButton<String>(
+                            value: tipoSeleccionado,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.arrow_drop_down, color: darkBlue),
+                            style: TextStyle(
+                              color: darkBlue,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                            ),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                tipoSeleccionado = newValue!;
+                              });
+                            },
+                            items: tiposCotizacion.map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
                         if (logoHotel != null && logoHotel!.isNotEmpty)
                           Center(
                             child: Container(

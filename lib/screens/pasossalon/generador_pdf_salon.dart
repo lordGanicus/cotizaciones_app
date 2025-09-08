@@ -34,11 +34,9 @@ Future<Uint8List> generarPdfCotizacionSalon({
 
   // Estilos
   final azulOscuro = PdfColor.fromInt(0xFF0D3B66);
-  final estiloTitulo =
-      pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold);
-  final estiloNegrita =
-      pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
-  final estiloNormal = pw.TextStyle(fontSize: 10);
+  final estiloTitulo = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
+  final estiloNegrita = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
+  final estiloNormal = pw.TextStyle(fontSize: 11);
   final estiloFirma = pw.TextStyle(
     fontSize: 28,
     font: acterumSignature,
@@ -56,11 +54,9 @@ Future<Uint8List> generarPdfCotizacionSalon({
     } catch (_) {}
   }
 
-  if (membreteSubestablecimiento != null &&
-      membreteSubestablecimiento.isNotEmpty) {
+  if (membreteSubestablecimiento != null && membreteSubestablecimiento.isNotEmpty) {
     try {
-      final membreteBytes =
-          await _networkImageToBytes(membreteSubestablecimiento);
+      final membreteBytes = await _networkImageToBytes(membreteSubestablecimiento);
       membreteImage = pw.MemoryImage(membreteBytes);
     } catch (_) {}
   }
@@ -88,7 +84,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
 
-  // PÁGINA 1
+  // PÁGINA 1 - Con el estilo similar al de habitaciones
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -105,88 +101,131 @@ Future<Uint8List> generarPdfCotizacionSalon({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 64),
-                  pw.Text('La Paz, ${formatFecha(DateTime.now())}',
-                      style: estiloNormal),
-                  pw.SizedBox(height: 16),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  // Datos cliente (estilo similar al de habitaciones)
+                  pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                              'N° de Cotización: ${obtenerCodigoCorto(idCotizacion)}',
-                              style: estiloNegrita),
-                          pw.SizedBox(height: 8),
-                          pw.Text('Cliente:', style: estiloNegrita),
-                          pw.Text(nombreCliente, style: estiloNormal),
-                          pw.SizedBox(height: 4),
-                          pw.Text('C.I / NIT: $ciCliente', style: estiloNormal),
-                        ],
+                      pw.Row(children: [
+                        pw.Text('N° de Cotización: ', style: estiloNegrita),
+                        pw.Text(obtenerCodigoCorto(idCotizacion), style: estiloNormal),
+                      ]),
+                      pw.SizedBox(height: 6),
+                      pw.Row(children: [
+                        pw.Text('Cliente: ', style: estiloNegrita),
+                        pw.Text(nombreCliente, style: estiloNormal),
+                      ]),
+                      pw.SizedBox(height: 6),
+                      pw.Row(children: [
+                        pw.Text('C.I / NIT: ', style: estiloNegrita),
+                        pw.Text(ciCliente, style: estiloNormal),
+                      ]),
+                      pw.SizedBox(height: 6),
+                      pw.Row(children: [
+                        pw.Text('Fecha: ', style: estiloNegrita),
+                        pw.Text(formatFecha(cotizacionData?['fecha_creacion']), style: estiloNormal),
+                      ]),
+                    ],
+                  ),
+
+                  pw.SizedBox(height: 40),
+                  pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text(
+                      'Ref.: Cotización de Servicios de Salón',
+                      style: pw.TextStyle(
+                        fontStyle: pw.FontStyle.italic,
+                        fontWeight: pw.FontWeight.bold,
                       ),
-                      // Referencia con espaciado
-                      pw.Container(
-                        margin: const pw.EdgeInsets.only(top: 20),
-                        child: pw.Text(
-                          'Ref.: Cotización de Servicios de Salón',
-                          style: pw.TextStyle(
-                            fontStyle: pw.FontStyle.italic,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
+                    ),
+                  ),
+
+                  pw.SizedBox(height: 24),
+                  pw.Text('Estimado(a):', style: estiloNegrita),
+                  pw.SizedBox(height: 8),
+
+                  pw.RichText(
+                    textAlign: pw.TextAlign.justify,
+                    text: pw.TextSpan(
+                      style: estiloNormal,
+                      children: [
+                        const pw.TextSpan(
+                          text: 'Brindamos un servicio completo para la organización de eventos, enfocado en confort, seguridad y atención personalizada, perfecto para reuniones corporativas, familiares o recreativas. ',
+                        ),
+                        pw.TextSpan(text: 'Nos aseguramos de cuidar cada detalle', style: estiloNegrita),
+                        const pw.TextSpan(
+                          text: ' para el éxito de su evento.',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  pw.SizedBox(height: 16),
+                  pw.Text(
+                    'Seguidamente, le mostraremos los datos según sus requerimientos:',
+                    style: estiloNormal,
+                    textAlign: pw.TextAlign.justify,
+                  ),
+
+                  pw.SizedBox(height: 24),
+                  pw.Text('Aspectos relevantes del evento', style: estiloTitulo),
+                  pw.SizedBox(height: 12),
+                  
+                  // Información del evento en formato de lista sin viñetas pero con etiquetas en negrita
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Evento programado: ', style: estiloNegrita),
+                            pw.TextSpan(text: nombreSalon, style: estiloNormal),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Fecha tentativa: ', style: estiloNegrita),
+                            pw.TextSpan(text: formatFecha(fechaEvento), style: estiloNormal),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Horario: ', style: estiloNegrita),
+                            pw.TextSpan(text: '${formatHora(horaInicio)} a ${formatHora(horaFin)}', style: estiloNormal),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Modalidad de armado: ', style: estiloNegrita),
+                            pw.TextSpan(text: tipoArmado, style: estiloNormal),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          children: [
+                            pw.TextSpan(text: 'Participantes: ', style: estiloNegrita),
+                            pw.TextSpan(text: '$participantes personas', style: estiloNormal),
+                          ],
                         ),
                       ),
                     ],
                   ),
+
+                  pw.SizedBox(height: 24),
+                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
                   pw.SizedBox(height: 20),
-                  pw.Text('Estimado(a):', style: estiloNegrita),
-                  pw.SizedBox(height: 8),
-                  pw.Text(
-                    'Brindamos un servicio completo para la organización de eventos, enfocado en confort, seguridad y atención personalizada, perfecto para reuniones corporativas, familiares o recreativas. Nos aseguramos de cuidar cada detalle para el éxito de su evento.',
-                    style: estiloNormal,
-                    textAlign: pw.TextAlign.justify,
-                  ),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    'Seguidamente, le mostraremos los datos según sus requerimientos',
-                    style: estiloNormal,
-                    textAlign: pw.TextAlign.justify,
-                  ),
-                  pw.SizedBox(height: 18),
 
-                  // NUEVA SECCIÓN: Aspectos relevantes del evento
-                  pw.Text('ASPECTOS RELEVANTES DEL EVENTO', style: estiloNegrita),
-                  pw.SizedBox(height: 12),
-                  pw.Bullet(
-                    text: 'Evento programado: $nombreSalon',
-                    style: estiloNormal,
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Bullet(
-                    text: 'Fecha tentativa: ${formatFecha(fechaEvento)}',
-                    style: estiloNormal,
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Bullet(
-                    text:
-                        'Horario: ${formatHora(horaInicio)} a ${formatHora(horaFin)}',
-                    style: estiloNormal,
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Bullet(
-                    text: 'Modalidad de armado: $tipoArmado',
-                    style: estiloNormal,
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Bullet(
-                    text: 'Participantes: $participantes personas',
-                    style: estiloNormal,
-                  ),
-                  pw.SizedBox(height: 18),
-
-                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloNegrita),
-                  pw.SizedBox(height: 12),
+                  // Tabla
                   pw.Table(
                     border: pw.TableBorder.all(color: PdfColors.grey300),
                     columnWidths: {
@@ -197,8 +236,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                     },
                     children: [
                       pw.TableRow(
-                        decoration:
-                            const pw.BoxDecoration(color: PdfColors.grey300),
+                        decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                         children: [
                           _cell('Descripción'),
                           _cell('Cantidad'),
@@ -207,11 +245,9 @@ Future<Uint8List> generarPdfCotizacionSalon({
                         ],
                       ),
                       ...items.map((item) {
-                        final descripcion =
-                            item['descripcion'] ?? 'Sin descripción';
+                        final descripcion = item['descripcion'] ?? 'Sin descripción';
                         final cantidad = item['cantidad'] ?? 0;
-                        final precioUnitario =
-                            (item['precio_unitario'] ?? 0).toDouble();
+                        final precioUnitario = (item['precio_unitario'] ?? 0).toDouble();
                         final subtotal = cantidad * precioUnitario;
 
                         return pw.TableRow(
@@ -250,7 +286,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
     ),
   );
 
-  // PÁGINA 2 - CON LAS NUEVAS POLÍTICAS
+  // PÁGINA 2 - MANTENIDA COMO ESTABA
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -269,7 +305,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                 children: [
                   pw.SizedBox(height: 58),
                   pw.Text('CONDICIONES GENERALES', style: estiloTitulo),
-                  pw.SizedBox(height: 10),
+                  pw.SizedBox(height: 5),
                   
                   pw.Text(
                     'Para confirmar la reserva del evento, es necesario realizar un anticipo del 60 % del monto total cotizado. El 40 % restante deberá ser cancelado con una anticipación mínima de 72 horas a la fecha del evento.',
@@ -316,7 +352,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                   ),
                   pw.SizedBox(height: 16),
                   
-                  pw.Text('ANULACIÓN Y REPROGRAMACIÓN', style: estiloTitulo),
+                  pw.Text('ANULACIÓN AND REPROGRAMACIÓN', style: estiloTitulo),
                   pw.SizedBox(height: 10),
                   
                   pw.Text(
