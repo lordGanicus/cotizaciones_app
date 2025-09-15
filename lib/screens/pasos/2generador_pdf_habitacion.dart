@@ -28,7 +28,7 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
 
   // Estilos
   final azulOscuro = PdfColor.fromInt(0xFF0D3B66);
-  final estiloTitulo = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
+  final estiloTitulo = pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold);
   final estiloNegrita = pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold);
   final estiloNormal = pw.TextStyle(fontSize: 11);
   final estiloFirma = pw.TextStyle(
@@ -91,8 +91,6 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  /*if (logoImage != null)
-                  pw.Center(child: pw.Image(logoImage, height: 80)),*/
                   pw.SizedBox(height: 20),
 
                   // Datos cliente
@@ -110,9 +108,12 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
                       ]),
                       pw.SizedBox(height: 6),
                       pw.Row(children: [
-                        pw.Text('C.I / NIT: ', style: estiloNegrita),
-                        pw.Text(ciMostrar(ciCliente), style: estiloNormal),
-                      ]),
+                      pw.Text('C.I / NIT: ', style: estiloNegrita),
+                      pw.Text(
+                        ciCliente?.isNotEmpty == true ? ciCliente : 'No especificado',
+                        style: estiloNormal,
+                      ),
+                    ]),
                       pw.SizedBox(height: 6),
                       pw.Row(children: [
                         pw.Text('Fecha: ', style: estiloNegrita),
@@ -231,7 +232,7 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
   );
 
   // =========================
-  // PÁGINA 2: Políticas y Condiciones
+  // PÁGINA 2: Políticas y Condiciones (sin viñetas)
   // =========================
   pdf.addPage(
     pw.Page(
@@ -263,7 +264,7 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
   );
 
   // =========================
-  // PÁGINA 3: Obligaciones y Firma
+  // PÁGINA 3: Obligaciones y Firma (sin viñetas)
   // =========================
   pdf.addPage(
     pw.Page(
@@ -285,19 +286,18 @@ Future<Uint8List> generarPdfCotizacionHabitacionDetallada({
                   pw.Center(child: pw.Text('Obligaciones', style: estiloTitulo)),
                   pw.SizedBox(height: 20),
                   ..._obligaciones(estiloNegrita, estiloNormal),
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 20),
                   
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 20),
 
-                  // Firma centrada (ahora en la tercera página)
                   pw.Center(
                     child: pw.Column(
                       children: [
                         pw.Text('${nombreUsuario.split(' ').take(2).join(' ')}', style: estiloFirma),
-                        pw.SizedBox(height: 12),
+                        pw.SizedBox(height: 4),
                         pw.Container(width: 150, height: 2, color: PdfColors.grey),
-                        pw.SizedBox(height: 6),
+                        pw.SizedBox(height: 2),
                         pw.Text('${nombreUsuario.split(' ').take(2).join(' ')}', style: estiloNormal),
                         pw.SizedBox(height: 6),
                         pw.Text('Gerente de Ventas', style: estiloNormal),
@@ -326,6 +326,7 @@ pw.Widget _cell(String text) {
   );
 }
 
+// 🔹 Políticas sin viñetas
 List<pw.Widget> _politicasYCondiciones(
   pw.TextStyle estiloNegrita,
   pw.TextStyle estiloNormal,
@@ -335,7 +336,8 @@ List<pw.Widget> _politicasYCondiciones(
   final politicas = [
     {
       'titulo': 'Horario de Ingreso (Check-In)',
-      'contenido': 'El horario de ingreso es a partir de las $checkIn. En caso de que la llegada se efectúe durante la madrugada, la reserva deberá gestionarse a partir de la noche anterior, incluyendo una noche adicional.'
+      'contenido':
+          'El horario de ingreso es a partir de las $checkIn. En caso de que la llegada se efectúe durante la madrugada, la reserva deberá gestionarse a partir de la noche anterior, incluyendo una noche adicional.'
     },
     {
       'titulo': 'Horario de Salida (Check-Out)',
@@ -343,41 +345,48 @@ List<pw.Widget> _politicasYCondiciones(
     },
     {
       'titulo': 'Llegada anticipada (Early Check-In)',
-      'contenido': 'En caso de requerir la habitación antes del horario de ingreso, se puede solicitar un ingreso más temprano el cual estaría sujeto a disponibilidad del hotel y según precio establecido.'
+      'contenido':
+          'En caso de requerir la habitación antes del horario de ingreso, se puede solicitar un ingreso más temprano el cual estaría sujeto a disponibilidad del hotel y según precio establecido.'
     },
     {
       'titulo': 'Salida tardía (Late Check-Out)',
-      'contenido': 'Si requiere ocupar la habitación pasado el horario de salida (mediodía), se incrementare el 50% de su tarifa hasta horas 18:00. Pasado este horario se procederá al cobro de una noche extra según el precio proporcionado.'
+      'contenido':
+          'Si requiere ocupar la habitación pasado el horario de salida (mediodía), se incrementare el 50% de su tarifa hasta horas 18:00. Pasado este horario se procederá al cobro de una noche extra según el precio proporcionado.'
     },
     {
       'titulo': 'Modificación de Reserva',
-      'contenido': 'Toda modificación se debe realizar hasta 24 horas antes de la llegada de cada huésped, caso contrario se realizará el cobro de la noche de hospedaje según la solicitud de reserva realizada inicialmente.'
+      'contenido':
+          'Toda modificación se debe realizar hasta 24 horas antes de la llegada de cada huésped, caso contrario se realizará el cobro de la noche de hospedaje según la solicitud de reserva realizada inicialmente.'
     },
     {
       'titulo': 'Cancelación',
-      'contenido': 'Toda cancelación de reserva, debe ser realizada con 24 horas de anticipación a la llegada de cada huésped, caso contrario se realizará el cobro de la primera noche.'
+      'contenido':
+          'Toda cancelación de reserva, debe ser realizada con 24 horas de anticipación a la llegada de cada huésped, caso contrario se realizará el cobro de la primera noche.'
     },
     {
       'titulo': 'No-Show',
-      'contenido': 'Se aplicará el No-Show, cuando el huésped no haya llegado al hotel, y su reserva no haya sido cancelada o modificada. Se procederá al cobro de la primera noche de hospedaje como penalidad.'
+      'contenido':
+          'Se aplicará el No-Show, cuando el huésped no haya llegado al hotel, y su reserva no haya sido cancelada o modificada. Se procederá al cobro de la primera noche de hospedaje como penalidad.'
     },
     {
       'titulo': 'Personas con discapacidad',
-      'contenido': 'El hotel cuenta con una habitación amplia y cómoda para personas con discapacidad, así como en áreas comunes como el restaurante y baños.'
+      'contenido':
+          'El hotel cuenta con una habitación amplia y cómoda para personas con discapacidad, así como en áreas comunes como el restaurante y baños.'
     },
   ];
 
   return politicas.expand((p) {
     return [
-      pw.Bullet(text: p['titulo']!, style: estiloNegrita),
+      pw.Text(p['titulo']!, style: estiloNegrita),
       pw.Padding(
-        padding: const pw.EdgeInsets.only(left: 14, top: 2, bottom: 14),
+        padding: const pw.EdgeInsets.only(left: 4, top: 2, bottom: 14),
         child: pw.Text(p['contenido']!, style: estiloNormal, textAlign: pw.TextAlign.justify),
       ),
     ];
   }).toList();
 }
 
+// 🔹 Obligaciones sin viñetas
 List<pw.Widget> _obligaciones(
   pw.TextStyle estiloNegrita,
   pw.TextStyle estiloNormal,
@@ -385,35 +394,41 @@ List<pw.Widget> _obligaciones(
   final obligaciones = [
     {
       'titulo': 'Niños',
-      'contenido': 'Se admiten niños menores a 10 años sin ningún cargo, siempre y cuando compartan la cama con sus papas. Mayores a 10 años pagan como una persona adulta extra.'
+      'contenido':
+          'Se admiten niños menores a 10 años sin ningún cargo, siempre y cuando compartan la cama con sus papas. Mayores a 10 años pagan como una persona adulta extra.'
     },
     {
       'titulo': 'Política de Edad Mínima',
-      'contenido': 'Se permite el ingreso únicamente a huéspedes mayores de 18 años. Los menores de edad deberán estar acompañados por un familiar.'
+      'contenido':
+          'Se permite el ingreso únicamente a huéspedes mayores de 18 años. Los menores de edad deberán estar acompañados por un familiar.'
     },
     {
       'titulo': 'Política de Libre de Tabaco',
-      'contenido': 'El hotel es Libre de Tabaco (Ley Nro.1333 del Medio Ambiente). En caso de fumar dentro de nuestras habitaciones o áreas no asignadas, se realizará un cargo de limpieza de USD. 100.00.'
+      'contenido':
+          'El hotel es Libre de Tabaco (Ley Nro.1333 del Medio Ambiente). En caso de fumar dentro de nuestras habitaciones o áreas no asignadas, se realizará un cargo de limpieza de USD. 100.00.'
     },
     {
       'titulo': 'Ruidos y Molestias',
-      'contenido': 'No es permitido realizar fiestas dentro nuestras habitaciones o suites. Cualquier reclamo por ruidos o molestias se realizará el desalojo del hotel sin el reembolso de la noche de hospedaje.'
+      'contenido':
+          'No es permitido realizar fiestas dentro nuestras habitaciones o suites. Cualquier reclamo por ruidos o molestias se realizará el desalojo del hotel sin el reembolso de la noche de hospedaje.'
     },
     {
       'titulo': 'Identificación',
-      'contenido': 'Todo huésped debe presentar su documento de identificación o pasaporte al momento de su registro, en el caso de huéspedes extranjeros también deben presentar la boleta de ingreso al país o sello de ingreso al país en el pasaporte. Caso contrario no se permitirá el ingreso o registro a nuestro hotel.'
+      'contenido':
+          'Todo huésped debe presentar su documento de identificación o pasaporte al momento de su registro, en el caso de huéspedes extranjeros también deben presentar la boleta de ingreso al país o sello de ingreso al país en el pasaporte. Caso contrario no se permitirá el ingreso o registro a nuestro hotel.'
     },
     {
       'titulo': 'Formas de Pago',
-      'contenido': 'Se admite el pago en efectivo, mediante tarjetas de débito o crédito (Visa y MasterCard) y a través de cobros por código QR.'
+      'contenido':
+          'Se admite el pago en efectivo, mediante tarjetas de débito o crédito (Visa y MasterCard) y a través de cobros por código QR.'
     },
   ];
 
   return obligaciones.expand((o) {
     return [
-      pw.Bullet(text: o['titulo']!, style: estiloNegrita),
+      pw.Text(o['titulo']!, style: estiloNegrita),
       pw.Padding(
-        padding: const pw.EdgeInsets.only(left: 14, top: 2, bottom: 14),
+        padding: const pw.EdgeInsets.only(left: 4, top: 2, bottom: 14),
         child: pw.Text(o['contenido']!, style: estiloNormal, textAlign: pw.TextAlign.justify),
       ),
     ];

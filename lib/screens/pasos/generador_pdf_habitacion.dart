@@ -111,7 +111,10 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                       pw.SizedBox(height: 6),
                       pw.Row(children: [
                         pw.Text('C.I / NIT: ', style: estiloNegrita),
-                        pw.Text(ciMostrar(ciCliente), style: estiloNormal),
+                        pw.Text(
+                          ciCliente?.isNotEmpty == true ? ciCliente : 'No especificado',
+                          style: estiloNormal,
+                        ),
                       ]),
                       pw.SizedBox(height: 6),
                       pw.Row(children: [

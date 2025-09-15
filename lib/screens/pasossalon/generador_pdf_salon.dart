@@ -49,16 +49,22 @@ Future<Uint8List> generarPdfCotizacionSalon({
 
   if (logoSubestablecimiento != null && logoSubestablecimiento.isNotEmpty) {
     try {
-      final logoBytes = await _networkImageToBytes(logoSubestablecimiento);
+      final logoBytes = await _downloadCloudinaryOriginal(logoSubestablecimiento);
       logoImage = pw.MemoryImage(logoBytes);
-    } catch (_) {}
+      print('✅ Logo descargado: ${logoBytes.lengthInBytes} bytes');
+    } catch (e) {
+      print('❌ Error cargando logo: $e');
+    }
   }
 
   if (membreteSubestablecimiento != null && membreteSubestablecimiento.isNotEmpty) {
     try {
-      final membreteBytes = await _networkImageToBytes(membreteSubestablecimiento);
+      final membreteBytes = await _downloadCloudinaryOriginal(membreteSubestablecimiento);
       membreteImage = pw.MemoryImage(membreteBytes);
-    } catch (_) {}
+      print('✅ Membrete descargado: ${membreteBytes.lengthInBytes} bytes');
+    } catch (e) {
+      print('❌ Error cargando membrete: $e');
+    }
   }
 
   String formatFecha(dynamic fecha) {
@@ -84,7 +90,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
 
   String obtenerCodigoCorto(String id) => id.substring(0, 8).toUpperCase();
 
-  // PÁGINA 1 - Con el estilo similar al de habitaciones
+  // ==================== PÁGINA 1 ====================
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -101,25 +107,29 @@ Future<Uint8List> generarPdfCotizacionSalon({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Datos cliente (estilo similar al de habitaciones)
+                  // Datos cliente
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
+                      pw.SizedBox(height: 58),
                       pw.Row(children: [
                         pw.Text('N° de Cotización: ', style: estiloNegrita),
                         pw.Text(obtenerCodigoCorto(idCotizacion), style: estiloNormal),
                       ]),
-                      pw.SizedBox(height: 6),
+                      pw.SizedBox(height: 5),
                       pw.Row(children: [
                         pw.Text('Cliente: ', style: estiloNegrita),
                         pw.Text(nombreCliente, style: estiloNormal),
                       ]),
-                      pw.SizedBox(height: 6),
+                      pw.SizedBox(height: 5),
                       pw.Row(children: [
                         pw.Text('C.I / NIT: ', style: estiloNegrita),
-                        pw.Text(ciCliente, style: estiloNormal),
+                        pw.Text(
+                          ciCliente?.isNotEmpty == true ? ciCliente : 'No especificado',
+                          style: estiloNormal,
+                        ),
                       ]),
-                      pw.SizedBox(height: 6),
+                      pw.SizedBox(height: 5),
                       pw.Row(children: [
                         pw.Text('Fecha: ', style: estiloNegrita),
                         pw.Text(formatFecha(cotizacionData?['fecha_creacion']), style: estiloNormal),
@@ -127,7 +137,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                     ],
                   ),
 
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 16),
                   pw.Align(
                     alignment: pw.Alignment.centerRight,
                     child: pw.Text(
@@ -139,7 +149,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                     ),
                   ),
 
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 16),
                   pw.Text('Estimado(a):', style: estiloNegrita),
                   pw.SizedBox(height: 8),
 
@@ -166,11 +176,8 @@ Future<Uint8List> generarPdfCotizacionSalon({
                     textAlign: pw.TextAlign.justify,
                   ),
 
-                  pw.SizedBox(height: 24),
-                  pw.Text('Aspectos relevantes del evento', style: estiloTitulo),
-                  pw.SizedBox(height: 12),
-                  
-                  // Información del evento en formato de lista sin viñetas pero con etiquetas en negrita
+                  pw.SizedBox(height: 16),
+                  // Información del evento
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
@@ -221,9 +228,9 @@ Future<Uint8List> generarPdfCotizacionSalon({
                     ],
                   ),
 
-                  pw.SizedBox(height: 24),
-                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
                   pw.SizedBox(height: 20),
+                  pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
+                  pw.SizedBox(height: 18),
 
                   // Tabla
                   pw.Table(
@@ -286,7 +293,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
     ),
   );
 
-  // PÁGINA 2 - MANTENIDA COMO ESTABA
+  // PÁGINA 2
   pdf.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -306,126 +313,110 @@ Future<Uint8List> generarPdfCotizacionSalon({
                   pw.SizedBox(height: 58),
                   pw.Text('CONDICIONES GENERALES', style: estiloTitulo),
                   pw.SizedBox(height: 5),
-                  
                   pw.Text(
                     'Para confirmar la reserva del evento, es necesario realizar un anticipo del 60 % del monto total cotizado. El 40 % restante deberá ser cancelado con una anticipación mínima de 72 horas a la fecha del evento.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'Los pagos podrán realizarse directamente en las oficinas del Hotel Madero o, en su defecto, mediante depósito o transferencia bancaria.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'En caso de no recibir el anticipo correspondiente, la reserva no será considerada confirmada, y no se garantiza la disponibilidad del salón.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 16),
-                  
+                  pw.SizedBox(height: 14),
                   pw.Text('VIGENCIA DE LA COTIZACIÓN', style: estiloTitulo),
-                  pw.SizedBox(height: 10),
-                  
+                  pw.SizedBox(height: 18),
                   pw.Text(
                     'La presente cotización tiene una vigencia de 10 días calendario desde la fecha de emisión.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'La disponibilidad del espacio está sujeta a confirmación escrita por parte del cliente.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'Asimismo, se requiere que la reserva sea gestionada con un mínimo de 72 horas de anticipación respecto a la fecha del evento.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 16),
-                  
+                  pw.SizedBox(height: 14),
                   pw.Text('ANULACIÓN AND REPROGRAMACIÓN', style: estiloTitulo),
-                  pw.SizedBox(height: 10),
-                  
+                  pw.SizedBox(height: 8),
                   pw.Text(
                     'Toda cancelación deberá ser comunicada por escrito, con al menos 15 días naturales de anticipación. Si la anulación se realiza fuera de este plazo, se aplicará un cargo por no presentación (No Show) equivalente al 50 % del valor total cotizado.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'Las solicitudes de reprogramación deberán realizarse también por escrito, con un mínimo de 7 días de anticipación, y estarán sujetas a una penalidad del 20 % sobre el total del evento.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 16),
-                  
+                  pw.SizedBox(height: 14),
                   pw.Text('CONSIDERACIONES IMPORTANTES', style: estiloTitulo),
-                  pw.SizedBox(height: 10),
-                  
+                  pw.SizedBox(height: 18),
                   pw.Text(
                     'No está permitido el ingreso de alimentos externos al salón.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'El ingreso de bebidas será permitido únicamente bajo la modalidad de descorche, con un recargo del 40 % sobre el valor declarado. Este costo cubre el servicio de atención, vajilla y cristalería.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 8),
-                  
+                  pw.SizedBox(height: 4),
                   pw.Text(
                     'El incumplimiento de estas condiciones podrá resulten en la cancelación inmediata del servicio sin derecho a reembolso.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 20),
-                  
+                  pw.SizedBox(height: 18),
                   pw.Text(
                     'Gracias por considerar nuestros servicios. Estamos atentos a cualquier detalle adicional que nos permita asegurar el éxito de su evento.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-                  pw.SizedBox(height: 15),
+                  pw.SizedBox(height: 13),
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 15),
+                  pw.SizedBox(height: 10),
                   pw.Center(
                     child: pw.Column(
                       children: [
-                        // Nombre del firmante en fuente Acterum con azulOscuro
                         pw.Text(
                           '${nombreUsuario.split(' ').take(2).join(' ')}',
                           style: estiloFirma.copyWith(color: azulOscuro),
                         ),
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 2),
                         pw.Container(
                           width: 150,
                           height: 2,
                           color: PdfColors.grey,
                         ),
-                         pw.SizedBox(height: 8),
-                       pw.Text(
-                        'Lic. ${nombreUsuario.split(' ').take(2).join(' ')}',
-                        style: estiloNormal,
-                      ),
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          ' ${nombreUsuario.split(' ').take(2).join(' ')}',
+                          style: estiloNormal,
+                        ),
+                        pw.SizedBox(height: 2),
                         pw.Text(
                           'Gerente de Ventas',
                           style: estiloNormal,
                         ),
-                        pw.SizedBox(height: 4),
+                        pw.SizedBox(height: 2),
                         pw.Text(
                           nombreSubestablecimiento,
                           style: estiloNormal,
@@ -451,9 +442,16 @@ pw.Widget _cell(String text) {
     child: pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
   );
 }
+// Función para descargar la imagen desde Cloudinary en máxima calidad
+Future<Uint8List> _downloadCloudinaryOriginal(String url) async {
+  print('🌐 Descargando imagen original desde: $url');
+  // Forzar calidad máxima (q_100) y sin transformación
+  Uri uri = Uri.parse(url);
+  // Evitar query params automáticos
+  final cleanUrl = uri.replace(queryParameters: {}).toString();
 
-Future<Uint8List> _networkImageToBytes(String url) async {
-  final response = await http.get(Uri.parse(url));
+  final response = await http.get(Uri.parse(cleanUrl));
+  print('📥 Status code: ${response.statusCode}, length: ${response.contentLength}');
   if (response.statusCode == 200) {
     return response.bodyBytes;
   }

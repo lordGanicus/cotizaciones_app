@@ -227,14 +227,14 @@ class _CrearCotizacionComidaStep1State
         _showError('El CI/NIT es obligatorio');
         return;
       }*/
-      if (!RegExp(r'^[0-9]+$').hasMatch(ci)) {
+      /*if (!RegExp(r'^[0-9]+$').hasMatch(ci)) {
         _showError('El CI/NIT solo puede contener números');
         return;
-      }
-      if (ci.length < 5) {
+      }*/
+      /*if (ci.length < 5) {
         _showError('Ingrese un CI/NIT válido');
         return;
-      }
+      }*/
 
       final notifier = ref.read(cotizacionComidaProvider.notifier);
 
@@ -461,29 +461,18 @@ class _CrearCotizacionComidaStep1State
                     const SizedBox(height: 16),
 
                     TextFormField(
-                      controller: _ciController,
+                      controller: _ciController, // tu controlador del CI/NIT
                       decoration: InputDecoration(
-                        labelText: 'CI / NIT',
+                        labelText: 'C.I / NIT',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        prefixIcon: const Icon(Icons.badge),
+                        prefixIcon: const Icon(Icons.credit_card),
                       ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.done,
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'El CI/NIT es obligatorio';
-                        }
-                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                          return 'Solo se permiten números';
-                        }
-                        if (value.trim().length < 5) {
-                          return 'Ingrese un CI/NIT válido';
-                        }
+                        // Ya no es obligatorio, no valida números ni longitud
                         return null;
                       },
                     ),

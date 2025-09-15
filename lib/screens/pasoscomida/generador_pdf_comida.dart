@@ -1,3 +1,4 @@
+
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -42,23 +43,24 @@ Future<Uint8List> generarPdfCotizacionComida({
 
   if (logoSubestablecimiento != null && logoSubestablecimiento.isNotEmpty) {
     try {
-      final logoBytes = await _networkImageToBytes(logoSubestablecimiento);
+      final logoBytes = await _descargarImagenOriginal(logoSubestablecimiento);
       logoImage = pw.MemoryImage(logoBytes);
     } catch (_) {}
   }
 
   if (membreteSubestablecimiento != null && membreteSubestablecimiento.isNotEmpty) {
     try {
-      final membreteBytes = await _networkImageToBytes(membreteSubestablecimiento);
+      final membreteBytes = await _descargarImagenOriginal(membreteSubestablecimiento);
       membreteImage = pw.MemoryImage(membreteBytes);
     } catch (_) {}
   }
 
-  // Función para fecha y hora
   String formatFechaHora(dynamic fecha) {
     try {
       if (fecha == null) return 'N/D';
-      final dtLocal = fecha is DateTime ? fecha.toLocal() : DateTime.parse(fecha.toString()).toLocal();
+      final dtLocal = fecha is DateTime
+          ? fecha.toLocal()
+          : DateTime.parse(fecha.toString()).toLocal();
       return '${dtLocal.day.toString().padLeft(2, '0')}/'
           '${dtLocal.month.toString().padLeft(2, '0')}/'
           '${dtLocal.year} ';
@@ -86,7 +88,7 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Datos cliente
+                  pw.SizedBox(height: 52),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
@@ -102,7 +104,10 @@ Future<Uint8List> generarPdfCotizacionComida({
                       pw.SizedBox(height: 6),
                       pw.Row(children: [
                         pw.Text('C.I / NIT: ', style: estiloNegrita),
-                        pw.Text(ciCliente, style: estiloNormal),
+                        pw.Text(
+                          ciCliente?.isNotEmpty == true ? ciCliente : 'No especificado',
+                          style: estiloNormal,
+                        ),
                       ]),
                       pw.SizedBox(height: 6),
                       pw.Row(children: [
@@ -111,8 +116,7 @@ Future<Uint8List> generarPdfCotizacionComida({
                       ]),
                     ],
                   ),
-
-                  pw.SizedBox(height: 40),
+                  pw.SizedBox(height: 30),
                   pw.Align(
                     alignment: pw.Alignment.centerRight,
                     child: pw.Text(
@@ -123,11 +127,9 @@ Future<Uint8List> generarPdfCotizacionComida({
                       ),
                     ),
                   ),
-
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 18),
                   pw.Text('Estimado(a):', style: estiloNegrita),
                   pw.SizedBox(height: 8),
-
                   pw.RichText(
                     textAlign: pw.TextAlign.justify,
                     text: pw.TextSpan(
@@ -143,19 +145,15 @@ Future<Uint8List> generarPdfCotizacionComida({
                       ],
                     ),
                   ),
-
                   pw.SizedBox(height: 16),
                   pw.Text(
                     'Presentamos a continuación el detalle de la cotización para su evento:',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
-
                   pw.SizedBox(height: 24),
                   pw.Text('DETALLES DE LA COTIZACIÓN', style: estiloTitulo),
                   pw.SizedBox(height: 20),
-
-                  // Tabla
                   pw.Table(
                     border: pw.TableBorder.all(color: PdfColors.grey300),
                     columnWidths: {
@@ -235,10 +233,10 @@ Future<Uint8List> generarPdfCotizacionComida({
                   pw.SizedBox(height: 52),
                   pw.Center(child: pw.Text('CONDICIONES GENERALES', style: estiloTitulo)),
                   pw.SizedBox(height: 8),
-                  ..._condicionesGeneralesRestaurante(estiloNegrita, estiloNormal),
-                  pw.SizedBox(height: 10),
+                  ..._condicionesGeneralesRestaurante(estiloNegrita, estiloParrafo),
+                  pw.SizedBox(height: 4),
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 8),
+                  pw.SizedBox(height: 2),
                   pw.Center(
                     child: pw.Column(
                       children: [
@@ -246,12 +244,12 @@ Future<Uint8List> generarPdfCotizacionComida({
                           '${nombreUsuario.split(' ').take(2).join(' ')}',
                           style: estiloFirma,
                         ),
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 2),
                         pw.Container(width: 150, height: 2, color: PdfColors.grey),
-                        pw.SizedBox(height: 4),
+                        pw.SizedBox(height: 2),
                         pw.Text(
                           '${nombreUsuario.split(' ').take(2).join(' ')}',
-                          style: estiloFirma,
+                          style: estiloNormal,
                         ),
                         pw.SizedBox(height: 2),
                         pw.Text('Gerente de ventas', style: estiloNormal),
@@ -279,41 +277,48 @@ pw.Widget _cell(String text) {
   );
 }
 
-// 🔹 CAMBIO AQUÍ: quité las viñetas y puse títulos en negrita sin bullet
 List<pw.Widget> _condicionesGeneralesRestaurante(
     pw.TextStyle estiloNegrita, pw.TextStyle estiloParrafo) {
   final condiciones = <Map<String, dynamic>>[
     {
       'titulo': 'Presupuesto del Servicio:',
-      'contenido': 'El presupuesto emitido tendrá carácter referencial y estará sujeto a variación según el menú seleccionado, la disponibilidad de insumos y los precios vigentes, en coordinación con la Encargada de Restaurantes.'
+      'contenido':
+          'El presupuesto emitido tendrá carácter referencial y estará sujeto a variación según el menú seleccionado, la disponibilidad de insumos y los precios vigentes, en coordinación con la Encargada de Restaurantes.'
     },
     {
       'titulo': 'Reservas:',
-      'contenido': 'Las reservas deberán formalizarse con una anticipación mínima de 48 horas, proporcionando la siguiente información: nombre del solicitante, cantidad de personas, fecha y hora del evento, lista de platos seleccionados y comprobante de anticipo equivalente al 50% del monto total.'
+      'contenido':
+          'Las reservas deberán formalizarse con una anticipación mínima de 48 horas, proporcionando la siguiente información: nombre del solicitante, cantidad de personas, fecha y hora del evento, lista de platos seleccionados y comprobante de anticipo equivalente al 50% del monto total.'
     },
     {
       'titulo': 'Condiciones de pago:',
-      'contenido': 'El anticipo constituye requisito indispensable para la confirmación de la reserva. El saldo deberá ser cancelado en su totalidad antes del inicio del evento, pudiendo realizarse los pagos en efectivo, tarjeta de débito/crédito o transferencia bancaria, conforme a los medios habilitados.'
+      'contenido':
+          'El anticipo constituye requisito indispensable para la confirmación de la reserva. El saldo deberá ser cancelado en su totalidad antes del inicio del evento, pudiendo realizarse los pagos en efectivo, tarjeta de débito/crédito o transferencia bancaria, conforme a los medios habilitados.'
     },
     {
       'titulo': 'Duración del servicio:',
-      'contenido': 'La prestación del servicio de alimentación tendrá una duración estimada de 2 horas, sujeta a ajustes de acuerdo con las características del evento y la coordinación previa con la Encargada de Restaurantes.'
+      'contenido':
+          'La prestación del servicio de alimentación tendrá una duración estimada de 2 horas, sujeta a ajustes de acuerdo con las características del evento y la coordinación previa con la Encargada de Restaurantes.'
     },
     {
       'titulo': 'Coordinación del evento:',
-      'contenido': 'Todos los aspectos relativos al desarrollo del evento, incluyendo menú, ambientación, logística y requerimientos adicionales, deberán ser definidos de manera directa con la Encargada de Restaurantes.'
+      'contenido':
+          'Todos los aspectos relativos al desarrollo del evento, incluyendo menú, ambientación, logística y requerimientos adicionales, deberán ser definidos de manera directa con la Encargada de Restaurantes.'
     },
     {
       'titulo': 'Exclusividad de espacios:',
-      'contenido': 'El alquiler del ambiente confiere al cliente el derecho de uso exclusivo del mismo durante el tiempo contratado, quedando prohibida su cesión o uso compartido sin autorización expresa del Restaurante.'
+      'contenido':
+          'El alquiler del ambiente confiere al cliente el derecho de uso exclusivo del mismo durante el tiempo contratado, quedando prohibida su cesión o uso compartido sin autorización expresa del Restaurante.'
     },
     {
       'titulo': 'Modificaciones y cancelaciones:',
-      'contenido': 'Cualquier modificación en el menú, número de asistentes u otros detalles deberá notificarse con una anticipación mínima de 24 horas. En caso de cancelación por parte del cliente, el anticipo no será reembolsable, salvo que la suspensión se deba a causas imputables al Restaurante.'
+      'contenido':
+          'Cualquier modificación en el menú, número de asistentes u otros detalles deberá notificarse con una anticipación mínima de 24 horas. En caso de cancelación por parte del cliente, el anticipo no será reembolsable, salvo que la suspensión se deba a causas imputables al Restaurante.'
     },
     {
       'titulo': 'Puntualidad:',
-      'contenido': 'El cliente deberá respetar estrictamente el horario establecido. El retraso mayor a 30 minutos podrá afectar la calidad y continuidad del servicio sin responsabilidad alguna para el Restaurante.'
+      'contenido':
+          'El cliente deberá respetar estrictamente el horario establecido. El retraso mayor a 30 minutos podrá afectar la calidad y continuidad del servicio sin responsabilidad alguna para el Restaurante.'
     },
   ];
 
@@ -333,10 +338,11 @@ List<pw.Widget> _condicionesGeneralesRestaurante(
   }).toList();
 }
 
-Future<Uint8List> _networkImageToBytes(String url) async {
+// 🔹 Función que descarga la imagen original de Cloudinary sin modificar URL
+Future<Uint8List> _descargarImagenOriginal(String url) async {
+  print('🌐 Descargando imagen original desde: $url');
   final response = await http.get(Uri.parse(url));
-  if (response.statusCode == 200) {
-    return response.bodyBytes;
-  }
+  print('📥 Status code: ${response.statusCode}, length: ${response.contentLength}');
+  if (response.statusCode == 200) return response.bodyBytes;
   throw Exception('Error al descargar imagen');
 }

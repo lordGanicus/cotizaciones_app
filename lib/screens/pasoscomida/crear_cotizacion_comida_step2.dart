@@ -45,6 +45,7 @@ class _CrearCotizacionComidaStep2State
     super.dispose();
   }
 
+  // Capitaliza automáticamente la primera letra de la descripción
   String _capitalizarDescripcion(String texto) {
     if (texto.isEmpty) return texto;
     return texto[0].toUpperCase() + texto.substring(1);
@@ -52,7 +53,6 @@ class _CrearCotizacionComidaStep2State
 
   void _agregarItem() {
     if (_formKey.currentState?.validate() ?? false) {
-      // Capitalizamos descripción
       final descripcionRaw = _descripcionController.text.trim();
       final descripcion = _capitalizarDescripcion(descripcionRaw);
 
@@ -132,11 +132,8 @@ class _CrearCotizacionComidaStep2State
                   if (value.trim().length < 3) {
                     return 'Ingrese una descripción válida';
                   }
-                  // Validar que comience con mayúscula y solo permita letras, números y espacios
+                  // Solo permitimos letras, números y espacios
                   final texto = value.trim();
-                  if (!RegExp(r'^[A-ZÁÉÍÓÚÑ]').hasMatch(texto[0])) {
-                    return 'La descripción debe empezar con mayúscula';
-                  }
                   if (!RegExp(r'^[A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s]+$').hasMatch(texto)) {
                     return 'La descripción solo puede contener letras, números y espacios';
                   }
