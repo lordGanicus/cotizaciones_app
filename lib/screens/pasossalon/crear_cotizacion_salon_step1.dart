@@ -551,7 +551,7 @@ class _Paso1CotizacionSalonPageState
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _ciController,
-                              decoration: _inputDecoration('CI or NIT (opcional)'),
+                              decoration: _inputDecoration('CI o NIT (opcional)'),
                               style: TextStyle(color: textColor),
                               keyboardType: const TextInputType.numberWithOptions(
                                   signed: false, decimal: false),

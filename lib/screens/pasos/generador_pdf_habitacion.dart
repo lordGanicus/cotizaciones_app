@@ -259,18 +259,18 @@ Future<Uint8List> generarPdfCotizacionHabitacion({
                   pw.SizedBox(height: 20),
 
                   pw.Text('Atentamente:', style: estiloNegrita),
-                  pw.SizedBox(height: 20),
+                  pw.SizedBox(height: 14),
 
                   // Firma centrada
                   pw.Center(
                     child: pw.Column(
                       children: [
                         pw.Text('${nombreUsuario.split(' ').take(2).join(' ')}', style: estiloFirma),
-                        pw.SizedBox(height: 12),
+                        pw.SizedBox(height: 4),
                         pw.Container(width: 150, height: 2, color: PdfColors.grey),
-                        pw.SizedBox(height: 6),
+                        pw.SizedBox(height: 4),
                         pw.Text('${nombreUsuario.split(' ').take(2).join(' ')}', style: estiloNormal),
-                        pw.SizedBox(height: 6),
+                        pw.SizedBox(height: 2),
                         pw.Text('Gerente de Ventas', style: estiloNormal),
                         pw.SizedBox(height: 2),
                         pw.Text(nombreHotel, style: estiloNormal),

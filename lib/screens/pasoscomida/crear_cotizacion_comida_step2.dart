@@ -132,10 +132,10 @@ class _CrearCotizacionComidaStep2State
                   if (value.trim().length < 3) {
                     return 'Ingrese una descripción válida';
                   }
-                  // Solo permitimos letras, números y espacios
                   final texto = value.trim();
-                  if (!RegExp(r'^[A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s]+$').hasMatch(texto)) {
-                    return 'La descripción solo puede contener letras, números y espacios';
+                  // Validación más flexible
+                  if (!RegExp(r'^[A-Za-zÁÉÍÓÚÑáéíóúñ0-9\s.,()\-\/]+$').hasMatch(texto)) {
+                    return 'La descripción contiene caracteres no permitidos';
                   }
                   return null;
                 },

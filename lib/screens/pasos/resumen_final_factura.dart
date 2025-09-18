@@ -235,7 +235,7 @@ class _ResumenFinalCotizacionHabitacionPageState
       }
       
       // Crear nombre del archivo
-      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - $tipoSeleccionado.pdf';
+      final fileName = '${widget.nombreCliente.replaceAll(RegExp(r'[^\w\s-]'), '')} - Cotización de hospedaje.pdf';
       final filePath = '${saveDir.path}/$fileName';
       final file = File(filePath);
       

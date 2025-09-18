@@ -88,7 +88,7 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 52),
+                  pw.SizedBox(height: 58),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
@@ -230,9 +230,9 @@ Future<Uint8List> generarPdfCotizacionComida({
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.SizedBox(height: 52),
+                  pw.SizedBox(height: 54),
                   pw.Center(child: pw.Text('CONDICIONES GENERALES', style: estiloTitulo)),
-                  pw.SizedBox(height: 8),
+                  pw.SizedBox(height: 6),
                   ..._condicionesGeneralesRestaurante(estiloNegrita, estiloParrafo),
                   pw.SizedBox(height: 4),
                   pw.Text('Atentamente:', style: estiloNegrita),

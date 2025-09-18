@@ -103,7 +103,7 @@ class _CrearCotizacionComidaStep4State
           'cantidad': item.cantidad,
           'precio_unitario': item.precioUnitario,
           'descripcion': item.descripcion,
-          'detalles': detalles, // Guardamos todo aquí
+          'detalles': detalles,
           'tipo': 'comida',
         };
       }).toList();
@@ -118,6 +118,9 @@ class _CrearCotizacionComidaStep4State
             'id_cliente': idCliente,
           })
           .eq('id', idCotizacion);
+
+      // 🔹 Limpiar los ítems en el provider después de guardar
+      ref.read(cotizacionComidaProvider.notifier).limpiar();
 
       setState(() => _isSaving = false);
 
@@ -145,7 +148,6 @@ class _CrearCotizacionComidaStep4State
   Widget build(BuildContext context) {
     final cotizacion = ref.watch(cotizacionComidaProvider);
 
-    // Formatear fecha y hora para mostrar
     String fechaEvento = cotizacion.fechaEvento != null
         ? DateFormat('dd/MM/yyyy').format(cotizacion.fechaEvento!)
         : '-';
@@ -165,23 +167,20 @@ class _CrearCotizacionComidaStep4State
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Subestablecimiento:',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
-            ),
+            Text('Subestablecimiento:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue)),
             Text(
               cotizacion.nombreSubestablecimiento.isEmpty
                   ? '-'
                   : cotizacion.nombreSubestablecimiento,
-              style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
+              style:
+                  TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Cliente:',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
-            ),
+            Text('Cliente:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue)),
             Text(
               cotizacion.nombreCliente.isEmpty
                   ? '-'
@@ -189,31 +188,21 @@ class _CrearCotizacionComidaStep4State
               style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Fecha del Evento:',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
-            ),
-            Text(
-              fechaEvento,
-              style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
-            ),
+            Text('Fecha del Evento:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue)),
+            Text(fechaEvento,
+                style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8))),
             const SizedBox(height: 8),
-            Text(
-              'Hora del Evento:',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue),
-            ),
-            Text(
-              horaEvento,
-              style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8)),
-            ),
+            Text('Hora del Evento:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16, color: darkBlue)),
+            Text(horaEvento,
+                style: TextStyle(fontSize: 16, color: darkBlue.withOpacity(0.8))),
             const SizedBox(height: 20),
-            Text(
-              'Platos Agregados:',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 18, color: darkBlue),
-            ),
+            Text('Platos Agregados:',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 18, color: darkBlue)),
             Expanded(
               child: ListView.separated(
                 itemCount: cotizacion.itemsComida.length,
@@ -221,11 +210,9 @@ class _CrearCotizacionComidaStep4State
                 itemBuilder: (context, index) {
                   final item = cotizacion.itemsComida[index];
                   return ListTile(
-                    title: Text(
-                      item.descripcion,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, color: darkBlue),
-                    ),
+                    title: Text(item.descripcion,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, color: darkBlue)),
                     subtitle: Text(
                       'Cantidad: ${item.cantidad}    Precio unitario: Bs ${item.precioUnitario.toStringAsFixed(2)}\nSubtotal: Bs ${item.subtotal.toStringAsFixed(2)}',
                       style: TextStyle(color: darkBlue.withOpacity(0.7)),
@@ -240,22 +227,16 @@ class _CrearCotizacionComidaStep4State
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Total:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: primaryGreen,
-                  ),
-                ),
-                Text(
-                  'Bs ${cotizacion.total.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: primaryGreen,
-                  ),
-                ),
+                Text('Total:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: primaryGreen)),
+                Text('Bs ${cotizacion.total.toStringAsFixed(2)}',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: primaryGreen)),
               ],
             ),
             const SizedBox(height: 20),
@@ -280,8 +261,8 @@ class _CrearCotizacionComidaStep4State
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  textStyle:
+                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
