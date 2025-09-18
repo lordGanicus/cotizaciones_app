@@ -320,7 +320,7 @@ Future<Uint8List> generarPdfCotizacionSalon({
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    'Los pagos podrán realizarse directamente en las oficinas del Hotel Madero o, en su defecto, mediante depósito o transferencia bancaria.',
+                    'Los pagos podrán realizarse directamente en las oficinas del Hotel, en su defecto, mediante depósito o transferencia bancaria.',
                     style: estiloNormal,
                     textAlign: pw.TextAlign.justify,
                   ),
